@@ -36,6 +36,7 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
     private final ThreadGroup g;
     public final Thread mt;
     DisplayMode fsmode = null, prefs = null;
+    private static Collection<MainFrame> allclients = null;
 	
     static {
 	try {
@@ -130,6 +131,14 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 		    }
 		}
 	    });
+	cmdmap.put("newwnd", new Console.Command() {
+		public void run(Console cons, String[] args) throws Exception {
+		    if((allclients != null) && !hasfs()) {
+			MainFrame f = new MainFrame(Config.wndsz);
+			f.mt.start();
+		    }
+		}
+	    });
     }
     public Map<String, Console.Command> findcmds() {
 	return(cmdmap);
@@ -173,7 +182,14 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 	Thread ui = new HackThread(p, "Haven UI thread");
 	p.setfsm(this);
 	ui.start();
+	Collection<MainFrame> cc = allclients;
 	try {
+	    if(cc != null) {
+		synchronized(cc) {
+		    cc.add(this);
+		    cc.notifyAll();
+		}
+	    }
 	    while(true) {
 		Bootstrap bill = new Bootstrap();
 		if(Config.defserv != null)
@@ -188,6 +204,12 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 	    }
 	} catch(InterruptedException e) {
 	} finally {
+	    if(cc != null) {
+		synchronized(cc) {
+		    cc.remove(this);
+		    cc.notifyAll();
+		}
+	    }
 	    ui.interrupt();
 	    dispose();
 	}
@@ -248,14 +270,26 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 	}
 	Config.cmdline(args);
 	setupres();
-	MainFrame f = new MainFrame(Config.wndsz);
-	if(Config.fullscreen)
-	    f.setfs();
-	f.mt.start();
+	allclients = new LinkedList<MainFrame>();
+	{
+	    MainFrame f = new MainFrame(Config.wndsz);
+	    if(Config.fullscreen)
+		f.setfs();
+	    f.mt.start();
+	}
 	try {
-	    f.mt.join();
+	    synchronized(allclients) {
+		while(true) {
+		    allclients.wait();
+		    if(allclients.isEmpty())
+			break;
+		}
+	    }
 	} catch(InterruptedException e) {
-	    f.g.interrupt();
+	    synchronized(allclients) {
+		for(MainFrame f : allclients)
+		    f.g.interrupt();
+	    }
 	    return;
 	}
 	dumplist(Resource.loadwaited, Config.loadwaited);
