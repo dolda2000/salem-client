@@ -134,7 +134,7 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 	cmdmap.put("newwnd", new Console.Command() {
 		public void run(Console cons, String[] args) throws Exception {
 		    if((allclients != null) && !hasfs()) {
-			MainFrame f = new MainFrame(Config.wndsz);
+			MainFrame f = new MainFrame(Config.wndsz, HackThread.tg().getParent());
 			f.mt.start();
 		    }
 		}
@@ -156,9 +156,9 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 	setIconImage(icon);
     }
 
-    public MainFrame(Coord sz) {
+    public MainFrame(Coord sz, ThreadGroup g) {
 	super("Salem");
-	this.g = new ThreadGroup(HackThread.tg(), "Haven client");
+	this.g = new ThreadGroup(g, "Haven client");
 	this.mt = new HackThread(this.g, this, "Haven main thread");
 	p = new HavenPanel(sz.x, sz.y);
 	fsmode = findmode(sz.x, sz.y);
@@ -171,9 +171,13 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 	p.init();
 	addWindowListener(new WindowAdapter() {
 		public void windowClosing(WindowEvent e) {
-		    g.interrupt();
+		    MainFrame.this.g.interrupt();
 		}
 	    });
+    }
+    
+    public MainFrame(Coord sz) {
+	this(sz, HackThread.tg());
     }
 	
     public void run() {
