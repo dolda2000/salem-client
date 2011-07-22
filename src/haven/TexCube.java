@@ -35,10 +35,15 @@ import haven.TexGL.TexOb;
 import static haven.GOut.checkerr;
 
 public class TexCube {
-    protected TexOb t = null;
-    private Object idmon = new Object();
+    protected final GLObject.ObMap<TexOb> t = new TexMap();
     protected int tdim;
     protected final BufferedImage back;
+    
+    private class TexMap extends GLObject.ObMap<TexOb> {
+	protected TexOb create(GL gl) {
+	    return(TexCube.this.create(gl));
+	}
+    }
     
     public TexCube(BufferedImage img) {
 	Coord sz = Utils.imgsz(img);
@@ -58,8 +63,7 @@ public class TexCube {
 	{2, 1},			// +Z
 	{0, 1},			// -Z
     };
-    protected void fill(GOut g) {
-	GL gl = g.gl;
+    protected void fill(GL gl) {
 	Coord dim = new Coord(tdim, tdim);
 	for(int i = 0; i < order.length; i++) {
 	    ByteBuffer data = ByteBuffer.wrap(TexI.convert(back, dim, new Coord(order[i][0] * tdim, order[i][1] * tdim), dim));
@@ -67,33 +71,21 @@ public class TexCube {
 	}
     }
 
-    private void create(GOut g) {
-	GL gl = g.gl;
-	t = new TexOb(gl);
-	gl.glBindTexture(GL.GL_TEXTURE_CUBE_MAP, t.id);
+    private TexOb create(GL gl) {
+	TexOb ob = new TexOb(gl);
+	gl.glBindTexture(GL.GL_TEXTURE_CUBE_MAP, ob.id);
 	gl.glTexParameteri(GL.GL_TEXTURE_CUBE_MAP, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
 	gl.glTexParameteri(GL.GL_TEXTURE_CUBE_MAP, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
-	fill(g);
+	fill(gl);
 	checkerr(gl);
+	return(ob);
     }
 
     public int glid(GOut g) {
-	GL gl = g.gl;
-	synchronized(idmon) {
-	    if((t != null) && (t.gl != gl))
-		dispose();
-	    if(t == null)
-		create(g);
-	    return(t.id);
-	}
+	return(t.get(g.gl).id);
     }
     
     public void dispose() {
-	synchronized(idmon) {
-	    if(t != null) {
-		t.dispose();
-		t = null;
-	    }
-	}
+	t.dispose();
     }
 }

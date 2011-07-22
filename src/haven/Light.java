@@ -92,7 +92,7 @@ public class Light implements Rendered {
 	    
 	public void reapply(GOut g) {
 	    GL gl = g.gl;
-	    gl.glUniform1i(g.st.prog.uniform("nlights"), g.st.get(lights).nlights);
+	    gl.glUniform1i(g.st.prog.uniform(g.gl, "nlights"), g.st.get(lights).nlights);
 	}
 	    
 	public void unapply(GOut g) {

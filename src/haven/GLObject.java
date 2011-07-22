@@ -78,4 +78,29 @@ public abstract class GLObject {
 	    obj.delete();
 	checkerr(gl);
     }
+    
+    public abstract static class ObMap<T extends GLObject> {
+	private final Map<GL, T> bk = new WeakHashMap<GL, T>();
+	
+	public T get(GL gl) {
+	    synchronized(this) {
+		T ob = bk.get(gl);
+		if(ob == null) {
+		    ob = create(gl);
+		    bk.put(gl, ob);
+		}
+		return(ob);
+	    }
+	}
+	
+	protected abstract T create(GL gl);
+	
+	public void dispose() {
+	    synchronized(this) {
+		for(T ob : bk.values())
+		    ob.dispose();
+		bk.clear();
+	    }
+	}
+    }
 }

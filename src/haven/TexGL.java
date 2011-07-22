@@ -32,8 +32,7 @@ import javax.media.opengl.*;
 import static haven.GOut.checkerr;
 
 public abstract class TexGL extends Tex {
-    protected TexOb t = null;
-    private Object idmon = new Object();
+    protected final GLObject.ObMap<TexOb> t = new TexMap();
     protected boolean mipmap = false;
     protected int magfilter = GL.GL_NEAREST, minfilter = GL.GL_NEAREST, wrapmode = GL.GL_REPEAT;
     protected Coord tdim;
@@ -59,12 +58,18 @@ public abstract class TexGL extends Tex {
 	}
     }
     
+    private class TexMap extends GLObject.ObMap<TexOb> {
+	protected TexOb create(GL gl) {
+	    return(TexGL.this.create(gl));
+	}
+    }
+    
     public TexGL(Coord sz) {
 	super(sz);
 	tdim = new Coord(nextp2(sz.x), nextp2(sz.y));
     }
 	
-    protected abstract void fill(GOut gl);
+    protected abstract void fill(GL gl);
 
     public void apply(GOut g) {
 	GL gl = g.gl;
@@ -78,7 +83,7 @@ public abstract class TexGL extends Tex {
     
     public void reapply(GOut g) {
 	GL gl = g.gl;
-	gl.glUniform1i(g.st.prog.uniform("tex2d"), 0);
+	gl.glUniform1i(g.st.prog.uniform(gl, "tex2d"), 0);
     }
 
     public void unapply(GOut g) {
@@ -108,16 +113,16 @@ public abstract class TexGL extends Tex {
 	gl.glBindTexture(GL.GL_TEXTURE_2D, glid(g));
     }
 
-    private void create(GOut g) {
-	GL gl = g.gl;
-	t = new TexOb(gl);
-	gl.glBindTexture(GL.GL_TEXTURE_2D, t.id);
+    private TexOb create(GL gl) {
+	TexOb ob = new TexOb(gl);
+	gl.glBindTexture(GL.GL_TEXTURE_2D, ob.id);
 	gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, minfilter);
 	gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, magfilter);
 	gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, wrapmode);
 	gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, wrapmode);
-	fill(g);
+	fill(gl);
 	checkerr(gl);
+	return(ob);
     }
 	
     protected Color setenv(GL gl) {
@@ -159,14 +164,7 @@ public abstract class TexGL extends Tex {
     }
 
     private int glid(GOut g) {
-	GL gl = g.gl;
-	synchronized(idmon) {
-	    if((t != null) && (t.gl != gl))
-		dispose();
-	    if(t == null)
-		create(g);
-	    return(t.id);
-	}
+	return(t.get(g.gl).id);
     }
 
     public void render(GOut g, Coord c, Coord ul, Coord br, Coord sz) {
@@ -195,12 +193,7 @@ public abstract class TexGL extends Tex {
     }
 	
     public void dispose() {
-	synchronized(idmon) {
-	    if(t != null) {
-		t.dispose();
-		t = null;
-	    }
-	}
+	t.dispose();
     }
 	
     static {

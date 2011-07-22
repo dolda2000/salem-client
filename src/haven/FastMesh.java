@@ -34,7 +34,7 @@ public class FastMesh implements FRendered {
     public final ShortBuffer indb;
     public final int num;
     public FastMesh from;
-    private DisplayList list = null;
+    private final GLObject.ObMap<DisplayList> lists = new ListMap();
     
     public FastMesh(VertexBuf vert, short[] ind) {
 	this.vert = vert;
@@ -86,25 +86,23 @@ public class FastMesh implements FRendered {
 	gl.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY);
     }
     
+    private class ListMap extends GLObject.ObMap<DisplayList> {
+	protected DisplayList create(GL gl) {
+	    DisplayList list = new DisplayList(gl);
+	    gl.glNewList(list.id, GL.GL_COMPILE);
+	    sdraw(gl);
+	    gl.glEndList();
+	    return(list);
+	}
+    }
+
     public void draw(GOut g) {
 	g.apply();
 	GL gl = g.gl;
-	if((list != null) && (!g.gc.usedl || (list.gl != gl))) {
-	    list.dispose();
-	    list = null;
-	}
-	if(list != null) {
-	    gl.glCallList(list.id);
+	if(compile() && g.gc.usedl) {
+	    gl.glCallList(lists.get(gl).id);
 	} else {
-	    if(compile() && g.gc.usedl) {
-		list = new DisplayList(gl);
-		gl.glNewList(list.id, GL.GL_COMPILE);
-		sdraw(gl);
-		gl.glEndList();
-		gl.glCallList(list.id);
-	    } else {
-		cdraw(gl);
-	    }
+	    cdraw(gl);
 	}
 	GOut.checkerr(gl);
     }
@@ -114,12 +112,7 @@ public class FastMesh implements FRendered {
     }
     
     public void updated() {
-	synchronized(this) {
-	    if(list != null) {
-		list.dispose();
-		list = null;
-	    }
-	}
+	lists.dispose();
     }
     
     public void dispose() {

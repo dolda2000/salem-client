@@ -33,7 +33,13 @@ import haven.GLShader.FragmentShader;
 
 public class GLProgram implements java.io.Serializable {
     public final Collection<GLShader> shaders;
-    private transient ProgOb glp;
+    private transient final GLObject.ObMap<ProgOb> glp = new GLObject.ObMap<ProgOb>() {
+	protected ProgOb create(GL gl) {
+	    ProgOb p = new ProgOb(gl);
+	    p.link(GLProgram.this);
+	    return(p);
+	}
+    };
     
     public GLProgram(Collection<GLShader> shaders) {
 	this.shaders = new ArrayList<GLShader>(shaders);
@@ -99,19 +105,29 @@ public class GLProgram implements java.io.Serializable {
 		throw(new ProgramException("Failed to link GL program", prog, info));
 	    }
 	}
-	
+
+	private final Map<String, Integer> umap = new IdentityHashMap<String, Integer>();
 	public int uniform(String name) {
-	    int r = gl.glGetUniformLocationARB(id, name);
-	    if(r < 0)
-		throw(new RuntimeException("Unknown uniform name: " + name));
-	    return(r);
+	    Integer r = umap.get(name);
+	    if(r == null) {
+		int rr = gl.glGetUniformLocationARB(id, name);
+		if(rr < 0)
+		    throw(new RuntimeException("Unknown uniform name: " + name));
+		umap.put(name, r = new Integer(rr));
+	    }
+	    return(r.intValue());
 	}
-	
+
+	private final Map<String, Integer> amap = new IdentityHashMap<String, Integer>();
 	public int attrib(String name) {
-	    int r = gl.glGetAttribLocationARB(id, name);
-	    if(r < 0)
-		throw(new RuntimeException("Unknown uniform name: " + name));
-	    return(r);
+	    Integer r = amap.get(name);
+	    if(r == null) {
+		int rr = gl.glGetAttribLocationARB(id, name);
+		if(rr < 0)
+		    throw(new RuntimeException("Unknown uniform name: " + name));
+		amap.put(name, r = new Integer(rr));
+	    }
+	    return(r.intValue());
 	}
     }
     
@@ -134,40 +150,14 @@ public class GLProgram implements java.io.Serializable {
     }
     
     public void apply(GOut g) {
-	if((glp != null) && (glp.gl != g.gl)) {
-	    glp.dispose();
-	    glp = null;
-	}
-	if(glp == null) {
-	    glp = new ProgOb(g.gl);
-	    glp.link(this);
-	}
-	g.gl.glUseProgramObjectARB(glp.id);
+	g.gl.glUseProgramObjectARB(glp.get(g.gl).id);
     }
     
     public void dispose() {
-	synchronized(this) {
-	    if(glp != null) {
-		ProgOb cur = glp;
-		glp = null;
-		cur.dispose();
-	    }
-	}
+	glp.dispose();
     }
-
-    private final Map<String, Integer> umap = new IdentityHashMap<String, Integer>();
-    public int uniform(String name) {
-	Integer r = umap.get(name);
-	if(r == null)
-	    umap.put(name, r = new Integer(glp.uniform(name)));
-	return(r.intValue());
-    }
-
-    private final Map<String, Integer> amap = new IdentityHashMap<String, Integer>();
-    public int attrib(String name) {
-	Integer r = amap.get(name);
-	if(r == null)
-	    amap.put(name, r = new Integer(glp.attrib(name)));
-	return(r.intValue());
+    
+    public int uniform(GL gl, String name) {
+	return(glp.get(gl).uniform(name));
     }
 }

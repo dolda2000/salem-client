@@ -32,7 +32,11 @@ import javax.media.opengl.*;
 
 public abstract class GLShader implements java.io.Serializable {
     public final String source, header;
-    private transient ShaderOb gls;
+    private transient final GLObject.ObMap<ShaderOb> gls = new GLObject.ObMap<ShaderOb>() {
+	protected ShaderOb create(GL gl) {
+	    return(GLShader.this.create(gl));
+	}
+    };
     
     public GLShader(String source, String header) {
 	this.source = source;
@@ -339,13 +343,7 @@ public abstract class GLShader implements java.io.Serializable {
     }
     
     public int glid(GL gl) {
-	if((gls != null) && (gls.gl != gl)) {
-	    gls.dispose();
-	    gls = null;
-	}
-	if(gls == null)
-	    gls = create(gl);
-	return(gls.id);
+	return(gls.get(gl).id);
     }
     
     protected abstract ShaderOb create(GL gl);

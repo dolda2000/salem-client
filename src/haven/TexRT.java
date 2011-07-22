@@ -67,11 +67,11 @@ public abstract class TexRT extends TexGL {
 	return(new byte[tdim.x * tdim.y * 4]);
     }
 
-    protected void fill(GOut g) {
-	rerender(g.gl);
+    protected void fill(GL gl) {
+	rerender(gl);
 	byte[] idat = initdata();
-	g.gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, tdim.x, tdim.y, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, (idat == null)?null:java.nio.ByteBuffer.wrap(idat));
-	GOut.checkerr(g.gl);
+	gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, tdim.x, tdim.y, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, (idat == null)?null:java.nio.ByteBuffer.wrap(idat));
+	GOut.checkerr(gl);
     }
 	
     private void subrend2(GOut g) {
