@@ -50,7 +50,7 @@ public class Widget {
 			       MenuGrid.class, CheckBox.class,
 			       ISBox.class, Fightview.class, IMeter.class, MapMod.class,
 			       GiveButton.class, Charlist.class, BuddyWnd.class,
-			       Speedget.class, Bufflist.class, GameUI.class};
+			       Speedget.class, Bufflist.class, GameUI.class, Scrollport.class};
 	
     static {
 	addtype("cnt", new WidgetFactory() {
@@ -405,7 +405,7 @@ public class Widget {
 	}
     }
 
-    public void draw(GOut g) {
+    public void draw(GOut g, boolean strict) {
 	Widget next;
 		
 	for(Widget wdg = child; wdg != null; wdg = next) {
@@ -413,8 +413,17 @@ public class Widget {
 	    if(!wdg.visible)
 		continue;
 	    Coord cc = xlate(wdg.c, true);
-	    wdg.draw(g.reclip(cc, wdg.sz));
+	    GOut g2;
+	    if(strict)
+		g2 = g.reclip(cc, wdg.sz);
+	    else
+		g2 = g.reclipl(cc, wdg.sz);
+	    wdg.draw(g2);
 	}
+    }
+    
+    public void draw(GOut g) {
+	draw(g, true);
     }
 	
     public boolean mousedown(Coord c, int button) {
@@ -497,10 +506,13 @@ public class Widget {
 		    if(key == '\t') {
 			Widget f = focused;
 			while(true) {
-			    if((ev.getModifiers() & InputEvent.SHIFT_MASK) == 0)
-				f = (f.next == null)?child:f.next;
-			    else
-				f = (f.prev == null)?lchild:f.prev;
+			    if((ev.getModifiers() & InputEvent.SHIFT_MASK) == 0) {
+				Widget n = f.rnext();
+				f = ((n == null) || !n.hasparent(this))?child:n;
+			    } else {
+				Widget p = f.rprev();
+				f = ((p == null) || !p.hasparent(this))?lchild:p;
+			    }
 			    if(f.canfocus)
 				break;
 			}
@@ -609,6 +621,26 @@ public class Widget {
 	    T ret = wdg.findchild(cl);
 	    if(ret != null)
 		return(ret);
+	}
+	return(null);
+    }
+    
+    public Widget rprev() {
+	if(lchild != null)
+	    return(lchild);
+	if(prev != null)
+	    return(prev);
+	return(parent);
+    }
+
+    public Widget rnext() {
+	if(child != null)
+	    return(child);
+	if(next != null)
+	    return(next);
+	for(Widget p = parent; p != null; p = p.parent) {
+	    if(p.next != null)
+		return(p.next);
 	}
 	return(null);
     }
