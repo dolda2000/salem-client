@@ -110,13 +110,18 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 	cmdmap.put("sz", new Console.Command() {
 		public void run(Console cons, String[] args) {
 		    if(args.length == 3) {
-			p.setSize(Integer.parseInt(args[1]), Integer.parseInt(args[2]));
+			int w = Integer.parseInt(args[1]),
+			    h = Integer.parseInt(args[2]);
+			p.setSize(w, h);
 			pack();
+			Utils.setprefc("wndsz", new Coord(w, h));
 		    } else if(args.length == 2) {
 			if(args[1].equals("dyn")) {
 			    setResizable(true);
+			    Utils.setprefb("wndlock", false);
 			} else if(args[1].equals("lock")) {
 			    setResizable(false);
+			    Utils.setprefb("wndlock", true);
 			}
 		    }
 		}
@@ -128,13 +133,16 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 			if(mode == null)
 			    throw(new Exception("No such mode is available"));
 			fsmode = mode;
+			Utils.setprefc("fsmode", new Coord(mode.getWidth(), mode.getHeight()));
 		    }
 		}
 	    });
 	cmdmap.put("newwnd", new Console.Command() {
 		public void run(Console cons, String[] args) throws Exception {
 		    if((allclients != null) && !hasfs()) {
-			MainFrame f = new MainFrame(Config.wndsz, HackThread.tg().getParent());
+			Dimension dim = p.getSize();
+			Coord sz = new Coord(dim.width, dim.height);
+			MainFrame f = new MainFrame(sz, HackThread.tg().getParent());
 			f.mt.start();
 		    }
 		}
@@ -156,15 +164,33 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 	setIconImage(icon);
     }
 
-    public MainFrame(Coord sz, ThreadGroup g) {
+    public MainFrame(Coord isz, ThreadGroup g) {
 	super("Salem");
+	Coord sz;
+	if(isz == null) {
+	    sz = Utils.getprefc("wndsz", new Coord(800, 600));
+	    if(sz.x < 640) sz.x = 640;
+	    if(sz.y < 480) sz.y = 480;
+	} else {
+	    sz = isz;
+	}
 	this.g = new ThreadGroup(g, "Haven client");
 	this.mt = new HackThread(this.g, this, "Haven main thread");
 	p = new HavenPanel(sz.x, sz.y);
-	fsmode = findmode(sz.x, sz.y);
+	if(fsmode == null) {
+	    Coord pfm = Utils.getprefc("fsmode", null);
+	    if(pfm != null)
+		fsmode = findmode(pfm.x, pfm.y);
+	}
+	if(fsmode == null) {
+	    DisplayMode cm = getGraphicsConfiguration().getDevice().getDisplayMode();
+	    fsmode = findmode(cm.getWidth(), cm.getHeight());
+	}
+	if(fsmode == null)
+	    fsmode = findmode(800, 600);
 	add(p);
 	pack();
-	setResizable(!Config.wndlock);
+	setResizable(!Utils.getprefb("wndlock", false));
 	p.requestFocus();
 	seticon();
 	setVisible(true);
@@ -174,12 +200,30 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 		    MainFrame.this.g.interrupt();
 		}
 	    });
+	if((isz == null) && Utils.getprefb("wndmax", false))
+	    setExtendedState(getExtendedState() | MAXIMIZED_BOTH);
     }
     
     public MainFrame(Coord sz) {
 	this(sz, HackThread.tg());
     }
 	
+    private void savewndstate() {
+	if(prefs == null) {
+	    if(getExtendedState() == NORMAL)
+		/* Apparent, getSize attempts to return the "outer
+		 * size" of the window, including WM decorations, even
+		 * though setSize sets the "inner size" of the
+		 * window. Therefore, use the Panel's size instead; it
+		 * ought to correspond to the inner size at all
+		 * times. */{
+		Dimension dim = p.getSize();
+		Utils.setprefc("wndsz", new Coord(dim.width, dim.height));
+	    }
+	    Utils.setprefb("wndmax", (getExtendedState() & MAXIMIZED_BOTH) != 0);
+	}
+    }
+
     public void run() {
 	if(Thread.currentThread() != this.mt)
 	    throw(new RuntimeException("MainFrame is being run from an invalid context"));
@@ -194,19 +238,19 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
 		    cc.notifyAll();
 		}
 	    }
-	    while(true) {
-		Bootstrap bill = new Bootstrap();
-		if(Config.defserv != null)
-		    bill.setaddr(Config.defserv);
-		if((Config.authuser != null) && (Config.authck != null)) {
-		    bill.setinitcookie(Config.authuser, Config.authck);
-		    Config.authck = null;
+	    try {
+		while(true) {
+		    Bootstrap bill = new Bootstrap(Config.defserv, Config.mainport);
+		    if((Config.authuser != null) && (Config.authck != null)) {
+			bill.setinitcookie(Config.authuser, Config.authck);
+			Config.authck = null;
+		    }
+		    Session sess = bill.run(p);
+		    RemoteUI rui = new RemoteUI(sess);
+		    rui.run(p.newui(sess));
 		}
-		Session sess = bill.run(p);
-		RemoteUI rui = new RemoteUI(sess);
-		rui.run(p.newui(sess));
-	    }
-	} catch(InterruptedException e) {
+	    } catch(InterruptedException e) {}
+	    savewndstate();
 	} finally {
 	    if(cc != null) {
 		synchronized(cc) {
@@ -267,17 +311,17 @@ public class MainFrame extends Frame implements Runnable, FSMan, Console.Directo
     }
 
     private static void main2(String[] args) {
+	Config.cmdline(args);
 	try {
 	    javabughack();
 	} catch(InterruptedException e) {
 	    return;
 	}
-	Config.cmdline(args);
 	setupres();
 	allclients = new LinkedList<MainFrame>();
 	{
-	    MainFrame f = new MainFrame(Config.wndsz);
-	    if(Config.fullscreen)
+	    MainFrame f = new MainFrame(null);
+	    if(Utils.getprefb("fullscreen", false))
 		f.setfs();
 	    f.mt.start();
 	}

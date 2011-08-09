@@ -127,40 +127,78 @@ public class Utils {
 	g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);		
     }
 	
-    static synchronized String getpref(String prefname, String def) {
+    static synchronized Preferences prefs() {
+	if(prefs == null) {
+	    Preferences node = Preferences.userNodeForPackage(Utils.class);
+	    if(Config.prefspec != null)
+		node = node.node(Config.prefspec);
+	    prefs = node;
+	}
+	return(prefs);
+    }
+
+    static String getpref(String prefname, String def) {
 	try {
-	    if(prefs == null)
-		prefs = Preferences.userNodeForPackage(Utils.class);
-	    return(prefs.get(prefname, def));
+	    return(prefs().get(prefname, def));
 	} catch(SecurityException e) {
 	    return(def);
 	}
     }
 	
-    static synchronized void setpref(String prefname, String val) {
+    static void setpref(String prefname, String val) {
 	try {
-	    if(prefs == null)
-		prefs = Preferences.userNodeForPackage(Utils.class);
-	    prefs.put(prefname, val);
+	    prefs().put(prefname, val);
 	} catch(SecurityException e) {
 	}
     }
     
-    static synchronized byte[] getprefb(String prefname, byte[] def) {
+    static boolean getprefb(String prefname, boolean def) {
 	try {
-	    if(prefs == null)
-		prefs = Preferences.userNodeForPackage(Utils.class);
-	    return(prefs.getByteArray(prefname, def));
+	    return(prefs().getBoolean(prefname, def));
+	} catch(SecurityException e) {
+	    return(def);
+	}
+    }
+    
+    static void setprefb(String prefname, boolean val) {
+	try {
+	    prefs().putBoolean(prefname, val);
+	} catch(SecurityException e) {
+	}
+    }
+
+    static Coord getprefc(String prefname, Coord def) {
+	try {
+	    String val = prefs().get(prefname, null);
+	    if(val == null)
+		return(def);
+	    int x = val.indexOf('x');
+	    if(x < 0)
+		return(def);
+	    return(new Coord(Integer.parseInt(val.substring(0, x)), Integer.parseInt(val.substring(x + 1))));
+	} catch(SecurityException e) {
+	    return(def);
+	}
+    }
+    
+    static void setprefc(String prefname, Coord val) {
+	try {
+	    prefs().put(prefname, val.x + "x" + val.y);
+	} catch(SecurityException e) {
+	}
+    }
+
+    static byte[] getprefb(String prefname, byte[] def) {
+	try {
+	    return(prefs().getByteArray(prefname, def));
 	} catch(SecurityException e) {
 	    return(def);
 	}
     }
 	
-    static synchronized void setprefb(String prefname, byte[] val) {
+    static void setprefb(String prefname, byte[] val) {
 	try {
-	    if(prefs == null)
-		prefs = Preferences.userNodeForPackage(Utils.class);
-	    prefs.putByteArray(prefname, val);
+	    prefs().putByteArray(prefname, val);
 	} catch(SecurityException e) {
 	}
     }
@@ -413,7 +451,7 @@ public class Utils {
     
     private static void dumptg(ThreadGroup tg, PrintWriter out, int indent) {
 	for(int o = 0; o < indent; o++)
-	    out.print("\t");
+	    out.print("    ");
 	out.println("G: \"" + tg.getName() + "\"");
 	Thread[] ths = new Thread[tg.activeCount() * 2];
 	ThreadGroup[] tgs = new ThreadGroup[tg.activeGroupCount() * 2];
@@ -422,7 +460,7 @@ public class Utils {
 	for(int i = 0; i < nt; i++) {
 	    Thread ct = ths[i];
 	    for(int o = 0; o < indent + 1; o++)
-		out.print("\t");
+		out.print("    ");
 	    out.println("T: \"" + ct.getName() + "\"");
 	}
 	for(int i = 0; i < ng; i++) {

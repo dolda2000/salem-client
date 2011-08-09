@@ -31,7 +31,7 @@ import java.util.*;
 import java.io.*;
 
 public class Session {
-    public static final int PVER = 10;
+    public static final int PVER = 11;
     
     public static final int MSG_SESS = 0;
     public static final int MSG_REL = 1;
@@ -71,7 +71,7 @@ public class Session {
     static final int ackthresh = 30;
 	
     DatagramSocket sk;
-    InetAddress server;
+    SocketAddress server;
     Thread rworker, sworker, ticker;
     public int connfailed = 0;
     public String state = "conn";
@@ -350,11 +350,14 @@ public class Session {
 				oc.avatar(gob, layers);
 			} else if(type == OD_FOLLOW) {
 			    long oid = msg.uint32();
-			    float zo = 0.0f;
-			    if(oid != 0xffffffffl)
-				zo = msg.int16() / 100.0f;
+			    Indir<Resource> xfres = null;
+			    String xfname = null;
+			    if(oid != 0xffffffffl) {
+				xfres = getres(msg.uint16());
+				xfname = msg.string();
+			    }
 			    if(gob != null)
-				oc.follow(gob, oid, zo);
+				oc.follow(gob, oid, xfres, xfname);
 			} else if(type == OD_HOMING) {
 			    long oid = msg.uint32();
 			    if(oid == 0xffffffffl) {
@@ -525,7 +528,7 @@ public class Session {
 		    } catch(IOException e) {
 			throw(new RuntimeException(e));
 		    }
-		    if(!p.getAddress().equals(server))
+		    if(!p.getSocketAddress().equals(server))
 			continue;
 		    Message msg = new Message(p.getData()[0], p.getData(), 1, p.getLength() - 1);
 		    if(msg.type == MSG_SESS) {
@@ -742,7 +745,7 @@ public class Session {
 	}
     }
 	
-    public Session(InetAddress server, String username, byte[] cookie) {
+    public Session(SocketAddress server, String username, byte[] cookie) {
 	this.server = server;
 	this.username = username;
 	this.cookie = cookie;
@@ -805,7 +808,7 @@ public class Session {
 	
     public void sendmsg(byte[] msg) {
 	try {
-	    sk.send(new DatagramPacket(msg, msg.length, server, Config.mainport));
+	    sk.send(new DatagramPacket(msg, msg.length, server));
 	} catch(IOException e) {
 	}
     }
