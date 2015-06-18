@@ -349,4 +349,7 @@ public class LocalMiniMap extends Window {
 	    super.mousemove(c);
 	}
     }
+
+    public void wdgmsg(String msg, Object... args) {
+    }
 }
