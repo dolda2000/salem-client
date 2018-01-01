@@ -205,9 +205,6 @@ public class Tempers extends SIWidget {
 			}.ntick(0.0);
 		    }
 		};
-	} else if ((cravail == null) && (crimg != null)) {
-	    crimg.reqdestroy();
-	    crimg = null;
 	}
 
 	FoodInfo food = null;
@@ -219,6 +216,14 @@ public class Tempers extends SIWidget {
 	if(lfood != food) {
 	    lfood = food;
 	    redraw();
+	}
+    }
+
+    public void cravail(Indir<Resource> res) {
+	cravail = res;
+	if(crimg != null) {
+	    crimg.reqdestroy();
+	    crimg = null;
 	}
     }
 

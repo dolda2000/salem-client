@@ -564,9 +564,9 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 	    tm.gavail = (Integer)args[0] != 0;
 	} else if(msg == "cravail") {
 	    if(args[0] == null)
-		tm.cravail = null;
+		tm.cravail(null);
 	    else
-		tm.cravail = ui.sess.getres((Integer)args[0]);
+		tm.cravail(ui.sess.getres((Integer)args[0]));
 	} else if(msg == "gobble") {
 	    boolean g = (Integer)args[0] != 0;
 	    if(g && (gobble == null)) {
