@@ -237,9 +237,9 @@ public class WItem extends Widget implements DTarget {
     public boolean mousedown(Coord c, int btn) {
 	if(btn == 1) {
 	    if(ui.modshift)
-		item.wdgmsg("transfer", c);
+		item.wdgmsg("transfer", c, ui.modmeta ? -1 : 1);
 	    else if(ui.modctrl)
-		item.wdgmsg("drop", c);
+		item.wdgmsg("drop", c, ui.modmeta ? -1 : 1);
 	    else
 		item.wdgmsg("take", c);
 	    return(true);
