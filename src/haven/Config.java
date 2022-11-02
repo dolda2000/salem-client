@@ -45,6 +45,7 @@ public class Config {
     public static boolean profile = getprop("haven.profile", "off").equals("on");
     public static boolean nolocalres = getprop("haven.nolocalres", "").equals("yesimsure");
     public static boolean fscache = getprop("haven.fscache", "on").equals("on");
+    public static boolean authcertstrict = getprop("haven.auth-cert-strict", "off").equals("on");
     public static String resdir = getprop("haven.resdir", null);
     public static boolean nopreload = getprop("haven.nopreload", "no").equals("yes");
     public static String loadwaited = getprop("haven.loadwaited", null);
