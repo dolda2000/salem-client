@@ -357,11 +357,12 @@ public class Store extends Window {
 	public static final Text empty = Text.render("Cart is empty", Button.defcol);
 	public static final int numw = 30, pricew = 50;
 	public final Cart cart;
+	public Button checkout;
 
 	public CartWidget(Coord c, Coord sz, Widget parent, Cart cart) {
 	    super(c, sz, parent);
 	    this.cart = cart;
-	    new ListWidget(Coord.z, sz.sub(0, 17), this);
+	    new ListWidget(Coord.z, sz.sub(0, 25), this);
 	}
 
 	public class ListWidget extends Widget {
@@ -463,6 +464,23 @@ public class Store extends Window {
 	    return(false);
 	}
 
+	protected void checkout() {
+	}
+
+	public void tick(double dt) {
+	    super.tick(dt);
+	    if(cart.items.isEmpty() && (checkout != null)) {
+		ui.destroy(checkout);
+		checkout = null;
+	    } else if(!cart.items.isEmpty() && (checkout == null)) {
+		checkout = new Button(new Coord(5, sz.y - 23), 75, this, "Checkout") {
+			public void click() {
+			    checkout();
+			}
+		    };
+	    }
+	}
+
 	private Text rtotal = null;
 	public void draw(GOut g) {
 	    super.draw(g);
@@ -470,7 +488,7 @@ public class Store extends Window {
 		String total = "Total: " + cart.total();
 		if((rtotal == null) || !rtotal.text.equals(total))
 		    rtotal = Text.render(total, Button.defcol);
-		g.image(rtotal.tex(), new Coord(sz.x - rtotal.sz().x, sz.y - 15));
+		g.image(rtotal.tex(), new Coord(sz.x - 5 - rtotal.sz().x, sz.y - ((25 + rtotal.sz().y) / 2)));
 	    }
 	}
     }
@@ -492,6 +510,9 @@ public class Store extends Window {
 		public boolean clickitem(Cart.Item item, int btn) {
 		    new Viewer(item.offer, Browser.this, cart);
 		    return(true);
+		}
+
+		public void checkout() {
 		}
 	    };
 	    point(null);
@@ -609,6 +630,8 @@ public class Store extends Window {
 		    back();
 		}
 	    };
+	    prev = new Img(new Coord(0, 175), textf.render(offer.price.toString(), Button.defcol).tex(), this);
+	    prev.c = new Coord(500 - prev.sz.x, prev.c.y);
 	    if(offer.desc != null) {
 		RichTextBox dbox = new RichTextBox(new Coord(0, 200), new Coord(500, 200), this, offer.desc, descfnd);
 		dbox.bg = null;
@@ -662,6 +685,7 @@ public class Store extends Window {
 		    new Img(new Coord(200, 400), Text.std.renderwrap((String)stat.get("msg"), new Color(255, 64, 64), 200).tex(), this);
 		} else if(Utils.eq(stat.get("status"), "obsolete")) {
 		    ui.destroy(this);
+		    ui.destroy(back);
 		    new Loader();
 		}
 	    }
