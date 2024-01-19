@@ -284,6 +284,7 @@ public class Utils {
 	for(Map.Entry<?, ?> ent : map.entrySet()) {
 	    ret[a + 0] = ent.getKey();
 	    ret[a + 1] = ent.getValue();
+	    a += 2;
 	}
 	return(ret);
     }
