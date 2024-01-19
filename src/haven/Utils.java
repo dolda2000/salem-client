@@ -259,7 +259,7 @@ public class Utils {
     public static Map<Object, Object> mapdecn(Object ob) {
 	return(mapdecn(ob, Object.class, Object.class));
     }
-    public static Object mapencn(Map<?, ?> map) {
+    public static Object[] mapencn(Map<?, ?> map) {
 	Object[] ret = new Object[map.size()];
 	int a = 0;
 	for(Map.Entry<?, ?> ent : map.entrySet())
@@ -278,7 +278,7 @@ public class Utils {
     public static Map<Object, Object> mapdecf(Object ob) {
 	return(mapdecf(ob, Object.class, Object.class));
     }
-    public static Object mapencf(Map<?, ?> map) {
+    public static Object[] mapencf(Map<?, ?> map) {
 	Object[] ret = new Object[map.size() * 2];
 	int a = 0;
 	for(Map.Entry<?, ?> ent : map.entrySet()) {
