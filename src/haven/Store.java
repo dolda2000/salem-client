@@ -154,6 +154,61 @@ public class Store extends Window {
 	}
     }
 
+    public static class Cart {
+	public final List<Item> items = new ArrayList<>();
+	public final Currency currency;
+
+	public Cart(Currency currency) {
+	    this.currency = currency;
+	}
+
+	public Cart(Catalog cat) {
+	    this(Utils.el(cat.offers).price.c);
+	}
+
+	public static class Item {
+	    public final Offer offer;
+	    public int num;
+
+	    public Item(Offer offer, int num) {
+		this.offer = offer;
+		this.num = num;
+	    }
+
+	    public Price total() {
+		return(new Price(offer.price.c, offer.price.a * num));
+	    }
+	}
+
+	public Item byoffer(Offer offer, boolean creat) {
+	    for(Item item : items) {
+		if(item.offer == offer)
+		    return(item);
+	    }
+	    if(creat) {
+		Item ret = new Item(offer, 0);
+		items.add(ret);
+		return(ret);
+	    }
+	    return(null);
+	}
+
+	public boolean remove(Item item) {
+	    return(items.remove(item));
+	}
+
+	public Price total() {
+	    int a = 0;
+	    for(Item item : items) {
+		Price ip = item.total();
+		if(ip.c != currency)
+		    throw(new RuntimeException("conflicting currencies"));
+		a += ip.a;
+	    }
+	    return(new Price(currency, a));
+	}
+    }
+
     public class Loader extends Widget {
 	private final Defer.Future<Catalog> cat;
 
@@ -263,8 +318,139 @@ public class Store extends Window {
 	}
     }
 
+    public static class NumberEntry extends TextEntry {
+	private String prev;
+
+	public NumberEntry(Coord c, int w, Widget parent, int def) {
+	    super(c, w, parent, Integer.toString(def));
+	    prev = text;
+	}
+
+	private boolean valid(String t) {
+	    if(t.equals(""))
+		return(true);
+	    try {
+		Integer.parseInt(t);
+	    } catch(NumberFormatException e) {
+		return(false);
+	    }
+	    return(true);
+	}
+
+	protected void changed() {
+	    if(valid(text))
+		prev = text;
+	    else
+		settext(prev);
+	}
+
+	public int get() {
+	    try {
+		return(Integer.parseInt(text));
+	    } catch(NumberFormatException e) {
+		return(0);
+	    }
+	}
+    }
+
+    public static class CartWidget extends Widget {
+	public static final Text empty = Text.render("Cart is empty", Button.defcol);
+	public static final int numw = 25;
+	public final Cart cart;
+	public final Scrollport scr;
+	private final Map<Cart.Item, ItemWidget> items = new HashMap<>();
+
+	public CartWidget(Coord c, Coord sz, Widget parent, Cart cart) {
+	    super(c, sz, parent);
+	    this.cart = cart;
+	    this.scr = new Scrollport(Window.fbox.btloff(), sz.sub(Window.fbox.bisz()), this);
+	}
+
+	public class ItemWidget extends Widget {
+	    public final Cart.Item item;
+	    public final Widget rbtn;
+
+	    public ItemWidget(Coord c, int w, Widget parent, Cart.Item item) {
+		super(c, new Coord(w, 20), parent);
+		this.item = item;
+		rbtn = new IButton(Coord.z, this, Window.cbtni[0], Window.cbtni[1], Window.cbtni[2]) {
+			public void click() {
+			    cart.remove(item);
+			}
+		    };
+		rbtn.c = new Coord(sz.x - rbtn.sz.x, (sz.y - rbtn.sz.y) / 2);
+	    }
+
+	    private Text rname, rnum;
+	    private int cnum;
+	    public void draw(GOut g) {
+		if(rname == null)
+		    rname = Text.render(item.offer.name, Button.defcol);
+		g.image(rname.tex(), new Coord(5, (sz.y - rname.sz().y) / 2), Coord.z, new Coord(rbtn.c.x - numw - 2 - 7, sz.y));
+		if(!item.offer.singleton) {
+		    if((rnum == null) || (cnum != item.num)) {
+			rnum = Text.render("\u00d7" + item.num, Button.defcol);
+			cnum = item.num;
+		    }
+		    g.image(rnum.tex(), new Coord(rbtn.c.x - numw, (sz.y - rnum.sz().y) / 2));
+		}
+		super.draw(g);
+	    }
+
+	    public boolean mousedown(Coord c, int btn) {
+		if(super.mousedown(c, btn))
+		    return(true);
+		return(clickitem(item, btn));
+	    }
+	}
+
+	protected boolean clickitem(Cart.Item item, int btn) {
+	    return(false);
+	}
+
+	private void update() {
+	    Map<Cart.Item, ItemWidget> old = new HashMap<>(items);
+	    int y = 0;
+	    boolean ch = false;
+	    for(Cart.Item item : cart.items) {
+		ItemWidget wdg = items.get(item);
+		if(wdg == null) {
+		    wdg = new ItemWidget(new Coord(0, y), scr.cont.sz.x, scr.cont, item);
+		    items.put(item, wdg);
+		    ch = true;
+		} else {
+		    old.remove(item);
+		    if(wdg.c.y != y) {
+			wdg.c = new Coord(wdg.c.x, y);
+			ch = true;
+		    }
+		}
+		y += wdg.sz.y;
+	    }
+	    for(ItemWidget wdg : old.values()) {
+		ui.destroy(wdg);
+		ch = true;
+	    }
+	    if(ch)
+		scr.cont.update();
+	}
+
+	public void tick(double dt) {
+	    update();
+	    super.tick(dt);
+	}
+
+	public void draw(GOut g) {
+	    super.draw(g);
+	    if(cart.items.isEmpty())
+		g.image(empty.tex(), sz.sub(empty.sz()).div(2));
+	    Window.fbox.draw(g, Coord.z, sz);
+	}
+    }
+
     public class Browser extends Widget {
 	public final Coord bsz = new Coord(175, 80);
+	public final Cart cart;
 	public final Catalog cat;
 	public final HScrollport btns;
 	private Img clbl;
@@ -273,7 +459,14 @@ public class Store extends Window {
 	public Browser(Catalog cat) {
 	    super(Coord.z, Store.this.asz, Store.this);
 	    this.cat = cat;
+	    this.cart = new Cart(cat);
 	    this.btns = new HScrollport(new Coord(10, sz.y - 180), new Coord(sz.x - 20, 180), this);
+	    new CartWidget(new Coord(sz.x - 200 - 10, 0), new Coord(200, sz.y - 200), this, cart) {
+		public boolean clickitem(Cart.Item item, int btn) {
+		    new Viewer(item.offer, Browser.this, cart);
+		    return(true);
+		}
+	    };
 	    point(null);
 	}
 
@@ -286,7 +479,7 @@ public class Store extends Window {
 	    }
 
 	    public void click() {
-		new Viewer(offer, Browser.this);
+		new Viewer(offer, Browser.this, cart);
 	    }
 	}
 
@@ -372,23 +565,25 @@ public class Store extends Window {
     public class Viewer extends Widget {
 	public final Offer offer;
 	public final Widget back;
+	public final Cart cart;
 	private Defer.Future<Object[]> status;
 	private Tex rimg;
 
-	public Viewer(Offer offer, Widget back) {
+	public Viewer(Offer offer, Widget back, Cart cart) {
 	    super(Coord.z, Store.this.asz, Store.this);
 	    this.offer = offer;
 	    this.back = back;
+	    this.cart = cart;
 	    this.status = Defer.later(() -> fetch("validate", "offer", offer.id, "ver", offer.ver));
-	    Widget prev = new Img(new Coord(25, 50), textf.render(offer.name, Button.defcol).tex(), this);
-	    new IButton(new Coord(0, 50).add(new Coord(25, prev.sz.y).sub(Utils.imgsz(Window.lbtni[0])).div(2)), this,
+	    Widget prev = new Img(new Coord(25, 175), textf.render(offer.name, Button.defcol).tex(), this);
+	    new IButton(new Coord(0, 175).add(new Coord(25, prev.sz.y).sub(Utils.imgsz(Window.lbtni[0])).div(2)), this,
 			Window.lbtni[0], Window.lbtni[1], Window.lbtni[2]) {
 		public void click() {
 		    back();
 		}
 	    };
 	    if(offer.desc != null) {
-		RichTextBox dbox = new RichTextBox(new Coord(0, 75), new Coord(500, 200), this, offer.desc, descfnd);
+		RichTextBox dbox = new RichTextBox(new Coord(0, 200), new Coord(500, 200), this, offer.desc, descfnd);
 		dbox.bg = null;
 	    }
 	    back.hide();
@@ -413,16 +608,31 @@ public class Store extends Window {
 		this.status = null;
 		Map<String, Object> stat = Utils.mapdecf(status, String.class, Object.class);
 		if(Utils.eq(stat.get("status"), "ok")) {
+		    NumberEntry num = null;
 		    if(!offer.singleton) {
-			new Label(new Coord(300, 330), this, "Quantity:");
-			new TextEntry(new Coord(350, 327), 25, this, "1");
+			new Label(new Coord(300, 430), this, "Quantity:");
+			num = new NumberEntry(new Coord(350, 427), 25, this, 1);
 		    }
-		    new Button(new Coord(400, 325), 100, this, "Add to cart") {
+		    NumberEntry fnum = num;
+		    new Button(new Coord(400, 425), 100, this, "Add to cart") {
 			public void click() {
+			    if(offer.singleton) {
+				cart.byoffer(offer, true).num = 1;
+			    } else {
+				int n = fnum.get();
+				if(n == 0) {
+				    Cart.Item item = cart.byoffer(offer, false);
+				    if(item != null)
+					cart.remove(item);
+				} else {
+				    cart.byoffer(offer, true).num = n;
+				}
+			    }
 			    back();
 			}
 		    };
 		} else if(Utils.eq(stat.get("status"), "invalid")) {
+		    new Img(new Coord(200, 400), Text.std.renderwrap((String)stat.get("msg"), new Color(255, 64, 64), 200).tex(), this);
 		} else if(Utils.eq(stat.get("status"), "obsolete")) {
 		    ui.destroy(this);
 		    new Loader();
@@ -435,7 +645,7 @@ public class Store extends Window {
 		try {
 		    if(rimg == null)
 			rimg = new TexI(offer.img.get());
-		    g.image(rimg, new Coord(sz.x - 25 - rimg.sz().x, 175 - (rimg.sz().y / 2)));
+		    g.image(rimg, new Coord(sz.x - 25 - rimg.sz().x, 300 - (rimg.sz().y / 2)));
 		} catch(Loading l) {
 		}
 	    }
