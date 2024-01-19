@@ -355,18 +355,66 @@ public class Store extends Window {
 
     public static class CartWidget extends Widget {
 	public static final Text empty = Text.render("Cart is empty", Button.defcol);
-	public static final int numw = 25;
+	public static final int numw = 30, pricew = 50;
 	public final Cart cart;
-	public final Scrollport scr;
-	private final Map<Cart.Item, ItemWidget> items = new HashMap<>();
 
 	public CartWidget(Coord c, Coord sz, Widget parent, Cart cart) {
 	    super(c, sz, parent);
 	    this.cart = cart;
-	    this.scr = new Scrollport(Window.fbox.btloff(), sz.sub(Window.fbox.bisz()), this);
+	    new ListWidget(Coord.z, sz.sub(0, 17), this);
+	}
+
+	public class ListWidget extends Widget {
+	    public final Scrollport scr;
+	    private final Map<Cart.Item, ItemWidget> items = new HashMap<>();
+
+	    public ListWidget(Coord c, Coord sz, Widget parent) {
+		super(c, sz, parent);
+		this.scr = new Scrollport(Window.fbox.btloff(), sz.sub(Window.fbox.bisz()), this);
+	    }
+
+	    private void update() {
+		Map<Cart.Item, ItemWidget> old = new HashMap<>(items);
+		int y = 0;
+		boolean ch = false;
+		for(Cart.Item item : cart.items) {
+		    ItemWidget wdg = items.get(item);
+		    if(wdg == null) {
+			wdg = new ItemWidget(new Coord(0, y), scr.cont.sz.x, scr.cont, item);
+			items.put(item, wdg);
+			ch = true;
+		    } else {
+			old.remove(item);
+			if(wdg.c.y != y) {
+			    wdg.c = new Coord(wdg.c.x, y);
+			    ch = true;
+			}
+		    }
+		    y += wdg.sz.y;
+		}
+		for(ItemWidget wdg : old.values()) {
+		    ui.destroy(wdg);
+		    ch = true;
+		}
+		if(ch)
+		    scr.cont.update();
+	    }
+
+	    public void tick(double dt) {
+		update();
+		super.tick(dt);
+	    }
+
+	    public void draw(GOut g) {
+		super.draw(g);
+		if(cart.items.isEmpty())
+		    g.image(empty.tex(), sz.sub(empty.sz()).div(2));
+		Window.fbox.draw(g, Coord.z, sz);
+	    }
 	}
 
 	public class ItemWidget extends Widget {
+	    public final int nmw, numx, pricex;
 	    public final Cart.Item item;
 	    public final Widget rbtn;
 
@@ -379,21 +427,28 @@ public class Store extends Window {
 			}
 		    };
 		rbtn.c = new Coord(sz.x - rbtn.sz.x, (sz.y - rbtn.sz.y) / 2);
+		pricex = rbtn.c.x - 5 - pricew;
+		numx = pricex - 5 - numw;
+		nmw = numx - 7;
 	    }
 
-	    private Text rname, rnum;
+	    private Text rname, rnum, rprice;
 	    private int cnum;
 	    public void draw(GOut g) {
 		if(rname == null)
 		    rname = Text.render(item.offer.name, Button.defcol);
-		g.image(rname.tex(), new Coord(5, (sz.y - rname.sz().y) / 2), Coord.z, new Coord(rbtn.c.x - numw - 2 - 7, sz.y));
+		g.image(rname.tex(), new Coord(5, (sz.y - rname.sz().y) / 2), Coord.z, new Coord(nmw, sz.y));
 		if(!item.offer.singleton) {
 		    if((rnum == null) || (cnum != item.num)) {
 			rnum = Text.render("\u00d7" + item.num, Button.defcol);
+			rprice = null;
 			cnum = item.num;
 		    }
-		    g.image(rnum.tex(), new Coord(rbtn.c.x - numw, (sz.y - rnum.sz().y) / 2));
+		    g.image(rnum.tex(), new Coord(numx, (sz.y - rnum.sz().y) / 2));
 		}
+		if(rprice == null)
+		    rprice = Text.render(item.total().toString(), Button.defcol);
+		g.image(rprice.tex(), new Coord(pricex, (sz.y - rprice.sz().y) / 2));
 		super.draw(g);
 	    }
 
@@ -408,43 +463,15 @@ public class Store extends Window {
 	    return(false);
 	}
 
-	private void update() {
-	    Map<Cart.Item, ItemWidget> old = new HashMap<>(items);
-	    int y = 0;
-	    boolean ch = false;
-	    for(Cart.Item item : cart.items) {
-		ItemWidget wdg = items.get(item);
-		if(wdg == null) {
-		    wdg = new ItemWidget(new Coord(0, y), scr.cont.sz.x, scr.cont, item);
-		    items.put(item, wdg);
-		    ch = true;
-		} else {
-		    old.remove(item);
-		    if(wdg.c.y != y) {
-			wdg.c = new Coord(wdg.c.x, y);
-			ch = true;
-		    }
-		}
-		y += wdg.sz.y;
-	    }
-	    for(ItemWidget wdg : old.values()) {
-		ui.destroy(wdg);
-		ch = true;
-	    }
-	    if(ch)
-		scr.cont.update();
-	}
-
-	public void tick(double dt) {
-	    update();
-	    super.tick(dt);
-	}
-
+	private Text rtotal = null;
 	public void draw(GOut g) {
 	    super.draw(g);
-	    if(cart.items.isEmpty())
-		g.image(empty.tex(), sz.sub(empty.sz()).div(2));
-	    Window.fbox.draw(g, Coord.z, sz);
+	    if(!cart.items.isEmpty()) {
+		String total = "Total: " + cart.total();
+		if((rtotal == null) || !rtotal.text.equals(total))
+		    rtotal = Text.render(total, Button.defcol);
+		g.image(rtotal.tex(), new Coord(sz.x - rtotal.sz().x, sz.y - 15));
+	    }
 	}
     }
 
@@ -620,12 +647,12 @@ public class Store extends Window {
 				cart.byoffer(offer, true).num = 1;
 			    } else {
 				int n = fnum.get();
-				if(n == 0) {
+				if(n <= 0) {
 				    Cart.Item item = cart.byoffer(offer, false);
 				    if(item != null)
 					cart.remove(item);
 				} else {
-				    cart.byoffer(offer, true).num = n;
+				    cart.byoffer(offer, true).num = Math.min(n, 99);
 				}
 			    }
 			    back();
