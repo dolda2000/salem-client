@@ -558,17 +558,17 @@ public class Store extends Window {
 			    WebBrowser.sshow(url);
 			    done();
 			} catch(WebBrowser.BrowserException | IOException e) {
-			    status("Could not launch web browser.", String.valueOf(e), "Return", this::back);
+			    status("Could not launch web browser.", RichText.Parser.quote(String.valueOf(e)), "Return", this::back);
 			}
 		    } else if(Utils.eq(stat.get("status"), "obsolete")) {
 			status("The catalog has changed while you were browsing.", null, "Reload", this::reload);
 		    } else if(Utils.eq(stat.get("status"), "invalid")) {
-			status("The purchase has become invalid.", (String)stat.get("msg"), "Reload", this::reload);
+			status("The purchase has become invalid.", RichText.Parser.quote((String)stat.get("msg")), "Reload", this::reload);
 		    }
 		} catch(Loading l) {
 		} catch(Defer.DeferredException e) {
 		    submit = null;
-		    status("An unexpected error occurred.", String.valueOf(e.getCause()), "Return", this::back);
+		    status("An unexpected error occurred.", RichText.Parser.quote(String.valueOf(e.getCause())), "Return", this::back);
 		    e.printStackTrace();
 		}
 	    }
