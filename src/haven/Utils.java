@@ -29,6 +29,7 @@ package haven;
 import java.awt.RenderingHints;
 import java.io.*;
 import java.nio.*;
+import java.nio.file.*;
 import java.net.*;
 import java.lang.reflect.*;
 import java.util.prefs.*;
@@ -123,7 +124,35 @@ public class Utils {
 	java.awt.Graphics2D g2 = (java.awt.Graphics2D)g;
 	g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);		
     }
-	
+
+    public static URI uri(String uri) {
+	try {
+	    return(new URI(uri));
+	} catch(URISyntaxException e) {
+	    throw(new IllegalArgumentException(uri, e));
+	}
+    }
+
+    public static URL url(String url) {
+	try {
+	    return(uri(url).toURL());
+	} catch(MalformedURLException e) {
+	    throw(new IllegalArgumentException(url, e));
+	}
+    }
+
+    public static Path path(String path) {
+	if(path == null)
+	    return(null);
+	return(FileSystems.getDefault().getPath(path));
+    }
+
+    public static Path pj(Path base, String... els) {
+	for(String el : els)
+	    base = base.resolve(el);
+	return(base);
+    }
+
     static synchronized Preferences prefs() {
 	if(prefs == null) {
 	    Preferences node = Preferences.userNodeForPackage(Utils.class);
@@ -541,6 +570,50 @@ public class Utils {
 	}
     }
     
+    public static interface IOFunction<T> {
+	/* Checked exceptions banzai :P */
+	public T run() throws IOException;
+    }
+
+    /* XXX: Sometimes, the client is getting strange and weird OS
+     * errors on Windows. For example, file sharing violations are
+     * sometimes returned even though Java always opens
+     * RandomAccessFiles in non-exclusive mode, and other times,
+     * permission is spuriously denied. I've had zero luck in trying
+     * to find a root cause for these errors, so just assume the error
+     * is transient and retry. :P */
+    public static <T> T ioretry(IOFunction<? extends T> task) throws IOException {
+	double[] retimes = {0.01, 0.1, 0.5, 1.0, 5.0};
+	Throwable last = null;
+	boolean intr = false;
+	try {
+	    for(int r = 0; true; r++) {
+		try {
+		    return(task.run());
+		} catch(RuntimeException | IOException exc) {
+		    if(last == null)
+			new Throwable("weird I/O error occurred on " + String.valueOf(task), exc).printStackTrace();
+		    if(last != null)
+			exc.addSuppressed(last);
+		    last = exc;
+		    if(r < retimes.length) {
+			try {
+			    Thread.sleep((long)(retimes[r] * 1000));
+			} catch(InterruptedException irq) {
+			    Thread.currentThread().interrupted();
+			    intr = true;
+			}
+		    } else {
+			throw(exc);
+		    }
+		}
+	    }
+	} finally {
+	    if(intr)
+		Thread.currentThread().interrupt();
+	}
+    }
+
     private static void dumptg(ThreadGroup tg, PrintWriter out, int indent) {
 	for(int o = 0; o < indent; o++)
 	    out.print("    ");

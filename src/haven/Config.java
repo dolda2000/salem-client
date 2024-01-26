@@ -36,6 +36,7 @@ public class Config {
     public static String defserv = getprop("haven.defserv", "127.0.0.1");
     public static URL resurl = geturl("haven.resurl", "");
     public static URL mapurl = geturl("haven.mapurl", "");
+    public static URI cachebase = geturi("haven.cachebase", "");
     public static URL screenurl = geturl("haven.screenurl", "");
     public static URL manualurl = geturl("haven.manualurl", "http://www.salemthegame.com/salemj/index");
     public static URL storeurl = geturl("haven.storeurl", "http://login.salemthegame.com/portal/tostore");
