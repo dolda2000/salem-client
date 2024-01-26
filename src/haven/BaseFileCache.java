@@ -46,7 +46,7 @@ public class BaseFileCache implements ResCache {
 		Path appdata = Utils.path(path);
 		if(!Files.exists(appdata) || !Files.isDirectory(appdata) || !Files.isReadable(appdata) || !Files.isWritable(appdata))
 		    break windows;
-		Path base = pj(appdata, "Haven and Hearth", "cache");
+		Path base = pj(appdata, "Salem", "cache");
 		if(!Files.exists(base)) {
 		    try {
 			Files.createDirectories(base);
@@ -63,7 +63,7 @@ public class BaseFileCache implements ResCache {
 		Path home = Utils.path(path);
 		if(!Files.exists(home) || !Files.isDirectory(home) || !Files.isReadable(home) || !Files.isWritable(home))
 		    break fallback;
-		Path base = pj(home, ".haven", "cache");
+		Path base = pj(home, ".salem", "cache");
 		if(!Files.exists(base)) {
 		    try {
 			Files.createDirectories(base);
