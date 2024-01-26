@@ -210,6 +210,8 @@ public class BaseFileCache implements ResCache {
 	Path tmp = Files.createTempFile(dir, "cache", ".new");
 	OutputStream fp = Files.newOutputStream(tmp);
 	return(new OutputStream() {
+		private boolean closed = false;
+
 		public void write(int b) throws IOException {
 		    fp.write(b);
 		}
@@ -224,6 +226,16 @@ public class BaseFileCache implements ResCache {
 			Files.move(tmp, path, StandardCopyOption.ATOMIC_MOVE);
 		    } catch(AtomicMoveNotSupportedException e) {
 			Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING);
+		    }
+		    closed = true;
+		}
+
+		protected void finalize() {
+		    if(!closed) {
+			try {
+			    fp.close();
+			    Files.delete(tmp);
+			} catch(IOException e) {}
 		    }
 		}
 	    });
