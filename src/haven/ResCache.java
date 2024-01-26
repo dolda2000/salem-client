@@ -40,7 +40,7 @@ public interface ResCache {
 	    if((ret = JnlpCache.create()) != null)
 		return(ret);
 	    if(Config.fscache) {
-		if((ret = FileCache.foruser()) != null)
+		if((ret = BaseFileCache.create()) != null)
 		    return(ret);
 	    }
 	    return(null);
