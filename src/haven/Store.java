@@ -209,6 +209,12 @@ public class Store extends Window {
 	}
     }
 
+    public static class MessageError extends RuntimeException {
+	public MessageError(String msg) {
+	    super(msg);
+	}
+    }
+
     public class Loader extends Widget {
 	private final Defer.Future<Catalog> cat;
 
@@ -225,8 +231,9 @@ public class Store extends Window {
 		Catalog cat;
 		try {
 		    cat = this.cat.get();
-		} catch(Defer.DeferredException exc) {
-		    new Reloader(exc.getCause());
+		} catch(Defer.DeferredException de) {
+		    Throwable exc = de.getCause();
+		    new Reloader(exc);
 		    ui.destroy(this);
 		    return;
 		}
@@ -241,7 +248,10 @@ public class Store extends Window {
 
 	public Reloader(Throwable exc) {
 	    super(Coord.z, Store.this.asz, Store.this);
-	    Label l = new Label(Coord.z, this, "Error loading catalog", textf);
+	    String msg = "Error loading catalog";
+	    if(exc instanceof MessageError)
+		msg = exc.getMessage();
+	    Label l = new Label(Coord.z, this, msg, textf);
 	    l.c = sz.sub(l.sz).div(2);
 	    new Button(Coord.z, 75, this, "Reload") {
 		public void click() {
@@ -926,6 +936,8 @@ public class Store extends Window {
 		    }
 		}
 		catgs.add(catg);
+	    } else if(type.equals("error")) {
+		throw(new MessageError((String)enc[1]));
 	    }
 	}
 	Collections.sort(offers, (a, b) -> (a.sortkey - b.sortkey));
