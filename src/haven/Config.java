@@ -27,6 +27,7 @@
 package haven;
 
 import java.net.URL;
+import java.net.URI;
 import java.io.PrintStream;
 import static haven.Utils.getprop;
 
@@ -79,6 +80,17 @@ public class Config {
 	try {
 	    return(new URL(val));
 	} catch(java.net.MalformedURLException e) {
+	    throw(new RuntimeException(e));
+	}
+    }
+
+    private static URI geturi(String name, String def) {
+	String val = getprop(name, def);
+	if(val.equals(""))
+	    return(null);
+	try {
+	    return(new URI(val));
+	} catch(java.net.URISyntaxException e) {
 	    throw(new RuntimeException(e));
 	}
     }

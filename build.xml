@@ -22,7 +22,7 @@
 
   <target name="salem-client" depends="build-env">
     <javac srcdir="src" destdir="build/classes" debug="on"
-	   source="1.6" target="1.6" includeantruntime="no"
+	   source="1.8" target="1.8" includeantruntime="no"
 	   bootclasspath="${boot-classpath}">
       <classpath>
 	<pathelement path="lib/jogl.jar" />
