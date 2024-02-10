@@ -55,6 +55,7 @@ public class Window extends Widget implements DTarget {
 	    }
 	};
     public static final IBox fbox = new IBox("gfx/hud", "ftl", "ftr", "fbl", "fbr", "fl", "fr", "ft", "fb");
+    public static final IBox tbox = new IBox("gfx/hud", "ttl", "ttr", "tbl", "tbr", "tl", "tr", "tt", "tb");
     public static final IBox swbox = new IBox("gfx/hud", "stl", "str", "sbl", "sbr", "sl", "sr", "st", "sb");
     public static final IBox wbox = new IBox("gfx/hud/wnd", "tl", "tr", "bl", "br", "vl", "vr", "ht", "hb");
     private static final IBox topless = new IBox(Tex.empty, Tex.empty, wbox.cbl, wbox.cbr, wbox.bl, wbox.br, Tex.empty, wbox.bb);
