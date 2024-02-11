@@ -493,18 +493,57 @@ public class Store extends Window {
 	}
     }
 
-    public class BrowserCheckouter extends Widget {
+    public abstract class Checkouter extends Widget {
 	public final Catalog cat;
 	public final Cart cart;
-	private Defer.Future<Object[]> submit;
 	private Widget status, detail, button;
 
-	public BrowserCheckouter(Catalog cat, Cart cart) {
+	public Checkouter(Catalog cat, Cart cart) {
 	    super(Coord.z, Store.this.asz, Store.this);
 	    this.cat = cat;
 	    this.cart = cart;
+	}
+
+	public void reload() {
+	    ui.destroy(this);
+	    new Loader();
+	}
+
+	public void back() {
+	    ui.destroy(this);
+	    new Browser(cat, cart);
+	}
+
+	public void status(String msg, String detail, String button, Runnable action) {
+	    if(this.status != null) {ui.destroy(this.status); this.status = null;}
+	    if(this.detail != null) {ui.destroy(this.detail); this.detail = null;}
+	    if(this.button != null) {ui.destroy(this.button); this.button = null;}
+	    int y = sz.y / 3;
+	    if(msg != null) {
+		this.status = new Img(Coord.z, textf.render(msg, Button.defcol).tex(), this);
+		this.status.c = new Coord((sz.x - this.status.sz.x) / 2, y); y += this.status.sz.y + 5;
+	    }
+	    if(detail != null) {
+		this.detail = new Img(Coord.z, descfnd.render(detail, 400).tex(), this);
+		this.detail.c = new Coord((sz.x - this.detail.sz.x) / 2, y); y += this.detail.sz.y + 5;
+	    }
+	    if(button != null) {
+		this.button = new Button(new Coord((sz.x - 100) / 2, y), 100, this, button) {
+			public void click() {
+			    action.run();
+			}
+		    };
+	    }
+	}
+    }
+
+    public class BrowserCheckouter extends Checkouter {
+	private Defer.Future<Object[]> submit;
+
+	public BrowserCheckouter(Catalog cat, Cart cart) {
+	    super(cat, cart);
 	    submit = Defer.later(this::submit);
-	    status("Checking out...", null, null, false);
+	    status("Checking out...", null, null, null);
 	}
 
 	public void tick(double dt) {
@@ -513,25 +552,23 @@ public class Store extends Window {
 		try {
 		    Map<Object, Object> stat = Utils.mapdecf(submit.get());
 		    submit = null;
-		    ui.destroy(status);
-		    status = null;
 		    if(Utils.eq(stat.get("status"), "ok")) {
 			try {
 			    URL url = new URL((String)stat.get("url"));
 			    WebBrowser.sshow(url);
+			    done();
 			} catch(WebBrowser.BrowserException | IOException e) {
-			    status("Could not launch web browser.", String.valueOf(e), "Return", false);
-			    return;
+			    status("Could not launch web browser.", String.valueOf(e), "Return", this::back);
 			}
-			done();
 		    } else if(Utils.eq(stat.get("status"), "obsolete")) {
-			status("The catalog has changed while you were browsing.", null, "Reload", true);
+			status("The catalog has changed while you were browsing.", null, "Reload", this::reload);
+		    } else if(Utils.eq(stat.get("status"), "invalid")) {
+			status("The purchase has become invalid.", (String)stat.get("msg"), "Reload", this::reload);
 		    }
 		} catch(Loading l) {
 		} catch(Defer.DeferredException e) {
 		    submit = null;
-		    ui.destroy(status);
-		    status("An unexpected error occurred.", String.valueOf(e), "Return", false);
+		    status("An unexpected error occurred.", String.valueOf(e.getCause()), "Return", this::back);
 		    e.printStackTrace();
 		}
 	    }
@@ -546,45 +583,8 @@ public class Store extends Window {
 	    return(fetch(conn));
 	}
 
-	private void status(String msg, String detail, String action, boolean reload) {
-	    if(this.status != null) {ui.destroy(this.status); this.status = null;}
-	    if(this.detail != null) {ui.destroy(this.detail); this.detail = null;}
-	    if(this.button != null) {ui.destroy(this.button); this.button = null;}
-	    int y = sz.y / 3;
-	    this.status = new Img(Coord.z, textf.render(msg, Button.defcol).tex(), this);
-	    this.status.c = new Coord((sz.x - this.status.sz.x) / 2, y); y += this.status.sz.y + 5;
-	    if(detail != null) {
-		this.detail = new Img(Coord.z, descfnd.render(detail, 400).tex(), this);
-		this.detail.c = new Coord((sz.x - this.detail.sz.x) / 2, y); y += this.detail.sz.y + 5;
-	    }
-	    if(action != null) {
-		this.button = new Button(new Coord((sz.x - 100) / 2, y), 100, this, action) {
-			public void click() {
-			    ui.destroy(BrowserCheckouter.this);
-			    if(reload)
-				new Loader();
-			    else
-				new Browser(cat, cart);
-			}
-		    };
-	    }
-	}
-
 	private void done() {
-	    status("Thank you!", "Please follow the instructions in the web browser to complete your purchase.", "Return", true);
-	}
-    }
-
-    public class SteamCheckouter extends Widget {
-	public final Catalog cat;
-	public final Cart cart;
-	public final Steam api;
-
-	public SteamCheckouter(Catalog cat, Cart cart, Steam api) {
-	    super(Coord.z, Store.this.asz, Store.this);
-	    this.cat = cat;
-	    this.cart = cart;
-	    this.api = api;
+	    status("Thank you!", "Please follow the instructions in the web browser to complete your purchase.", "Return", this::reload);
 	}
     }
 
@@ -608,18 +608,7 @@ public class Store extends Window {
 		}
 
 		public void checkout() {
-		    Steam steam = null;
-		    /*
-		    try {
-			steam = Steam.get();
-		    } catch(NoClassDefFoundError e) {
-		    }
-		    */
-		    if(steam == null) {
-			new BrowserCheckouter(cat, cart);
-		    } else {
-			new SteamCheckouter(cat, cart, steam);
-		    }
+		    new BrowserCheckouter(cat, cart);
 		    ui.destroy(Browser.this);
 		}
 	    };
