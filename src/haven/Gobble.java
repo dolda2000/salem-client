@@ -79,6 +79,7 @@ public class Gobble extends SIWidget {
 	public void tick(double dt) {
 	    if(updt) {
 		nw = 0;
+		double cm = 0;
 		int aw = 0;
 		for(TypeMod m : mods) {
 		    if(m.rn == null) {
@@ -97,8 +98,14 @@ public class Gobble extends SIWidget {
 			} catch(Loading l) {
 			}
 		    }
+		    
 		    if(m.ra == null) {
-			Text rt = tnf.render((int)Math.round(m.a * 100) + "%", new Color(255, (int)(255 * m.a), (int)(255 * m.a)));
+			if((m.a * 100) > 10) {
+			    cm = 10;
+			} else {
+			    cm = m.a * 100;
+			}			    
+			Text rt = tnf.render((int)Math.round(m.a * 100) + " ", new Color(255, (int)(255 - (25.5 * (cm - 1))), (int)(255 - (25.5 * (cm - 1)))));
 			m.ra = new TexI(rasterimg(blurmask2(rt.img.getRaster(), 2, 1, new Color(0, 0, 0))));
 		    }
 		    nw = Math.max(nw, m.rn.sz().x);
@@ -182,14 +189,14 @@ public class Gobble extends SIWidget {
     }
 
     private WritableRaster rgmeter(GobbleInfo food, double e, int t) {
-	return(alphablit(rmeter(hibars[t].getRaster(), lev[t] + (int)(e * food.h[t]), max),
-			 rmeter(lobars[t].getRaster(), lev[t] + (int)(e * food.l[t]), max),
+	return(alphablit(rmeter(hibars[t].getRaster(), lev[t] + (int)(food.h[t]), max),
+			 rmeter(lobars[t].getRaster(), lev[t] + (int)(food.l[t]), max),
 			 Coord.z));
     }
 
     private WritableRaster lgmeter(GobbleInfo food, double e, int t) {
-	return(alphablit(lmeter(hibars[t].getRaster(), lev[t] + (int)(e * food.h[t]), max),
-			 lmeter(lobars[t].getRaster(), lev[t] + (int)(e * food.l[t]), max),
+	return(alphablit(lmeter(hibars[t].getRaster(), lev[t] + (int)(food.h[t]), max),
+			 lmeter(lobars[t].getRaster(), lev[t] + (int)(food.l[t]), max),
 			 Coord.z));
     }
 
@@ -201,7 +208,7 @@ public class Gobble extends SIWidget {
 	alphablit(dst, lmeter(sbars[1].getRaster(), lmax[1], max), mc[1].sub(bars[1].getWidth() - 1, 0));
 	alphablit(dst, lmeter(sbars[2].getRaster(), lmax[2], max), mc[2].sub(bars[2].getWidth() - 1, 0));
 	alphablit(dst, rmeter(sbars[3].getRaster(), lmax[3], max), mc[3]);
-
+	
 	if(lfood != null) {
 	    double e = foodeff(lfood);
 	    alphablit(dst, rgmeter(lfood, e, 0), mc[0]);
@@ -209,7 +216,7 @@ public class Gobble extends SIWidget {
 	    alphablit(dst, lgmeter(lfood, e, 2), mc[2].sub(bars[1].getWidth() - 1, 0));
 	    alphablit(dst, rgmeter(lfood, e, 3), mc[3]);
 	}
-
+	
 	alphablit(dst, rmeter(bars[0].getRaster(), lev[0], max), mc[0]);
 	alphablit(dst, lmeter(bars[1].getRaster(), lev[1], max), mc[1].sub(bars[1].getWidth() - 1, 0));
 	alphablit(dst, lmeter(bars[2].getRaster(), lev[2], max), mc[2].sub(bars[2].getWidth() - 1, 0));
