@@ -57,6 +57,7 @@ public class GameUI extends ConsoleHost implements Console.Directory {
     public Collection<GItem> hand = new LinkedList<GItem>();
     private WItem vhand;
     public ChatUI chat;
+    public FlatnessTool flat;
     public ChatUI.Channel syslog;
     public int prog = -1;
     private boolean afk = false;
@@ -834,9 +835,9 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 		    pv = !pv;
 		}
 	    };
-	    lndb = new MenuButton(new Coord(78, 160), this, "lnd", -1, "Display Landscape Tool") {
+	    lndb = new MenuButton(new Coord(78, 160), this, "lnd", 12, "Display Landscape Tool") {
 		public void click() {
-		    FlatnessTool.instance(GameUI.this);
+		    FlatnessTool.instance(GameUI.this).toggle();
 		}
 	    };
 	    chatb = new MenuButton(new Coord(100, 160), this, "chat", 3, "Chat (Ctrl+C)") {
@@ -948,7 +949,7 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 	if((Config.manualurl != null) && (WebBrowser.self != null)) {
 	    new IButton(Coord.z, this, Resource.loadimg("gfx/hud/manu"), Resource.loadimg("gfx/hud/mand"), Resource.loadimg("gfx/hud/manh")) {
 		{
-		    tooltip = Text.render("Open Manual");
+		    tooltip = Text.render("Go to Wiki!");
 		}
 		
 		public void click() {
