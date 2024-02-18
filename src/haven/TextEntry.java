@@ -30,8 +30,11 @@ import java.awt.*;
 import java.awt.event.KeyEvent;
 
 public class TextEntry extends Widget {
-    public static final Text.Foundry fnd = new Text.Foundry(new Font("SansSerif", Font.PLAIN, 12), Color.BLACK);
+    public static final Text.Foundry fnd = new Text.Foundry(new Font("SansSerif", Font.PLAIN, 12), Color.WHITE);
     public static final int defh = fnd.height() + 2;
+    public static final IBox box = Window.tbox;
+    public static final int toffx = box.bl.sz().x + 1;
+    public static final int wmarg = box.bl.sz().x + box.br.sz().x + 3;
     public LineEdit buf;
     public int sx;
     public boolean pw = false;
@@ -78,7 +81,23 @@ public class TextEntry extends Widget {
     }
 
     protected void drawbg(GOut g) {
+	g.chcolor(0, 0, 0, 255);
 	g.frect(Coord.z, sz);
+	g.chcolor();
+    }
+
+    protected void drawbb(GOut g) {
+	g.image(box.bt, new Coord(box.ctl.sz().x, 0), new Coord(sz.x - box.ctr.sz().x - box.ctl.sz().x, box.bt.sz().y));
+	g.image(box.bb, new Coord(box.cbl.sz().x, sz.y - box.bb.sz().y), new Coord(sz.x - box.cbr.sz().x - box.cbl.sz().x, box.bb.sz().y));
+    }
+
+    protected void drawfb(GOut g) {
+	g.image(box.bl, new Coord(0, box.ctl.sz().y), new Coord(box.bl.sz().x, sz.y - box.cbl.sz().y - box.ctl.sz().y));
+	g.image(box.br, new Coord(sz.x - box.br.sz().x, box.ctr.sz().y), new Coord(box.br.sz().x, sz.y - box.cbr.sz().y - box.ctr.sz().y));
+	g.image(box.ctl, Coord.z);
+	g.image(box.ctr, new Coord(sz.x - box.ctr.sz().x, 0));
+	g.image(box.cbl, new Coord(0, sz.y - box.cbl.sz().y));
+	g.image(box.cbr, new Coord(sz.x - box.cbr.sz().x, sz.y - box.cbr.sz().y));
     }
 
     public void draw(GOut g) {
@@ -92,18 +111,19 @@ public class TextEntry extends Widget {
 	    dtext = buf.line;
 	}
 	drawbg(g);
+	drawbb(g);
 	if((tcache == null) || !tcache.text.equals(dtext))
 	    tcache = fnd.render(dtext);
 	int cx = tcache.advance(buf.point);
 	if(cx < sx) sx = cx;
-	if(cx > sx + (sz.x - 1)) sx = cx - (sz.x - 1);
-	g.image(tcache.tex(), new Coord(-sx, 0));
+	if(cx > sx + (sz.x - wmarg)) sx = cx - (sz.x - wmarg);
+	int ty = (sz.y - tcache.sz().y) / 2;
+	g.image(tcache.tex(), new Coord(toffx - sx, ty));
 	if(hasfocus && ((System.currentTimeMillis() % 1000) > 500)) {
-	    int lx = cx - sx + 1;
-	    g.chcolor(0, 0, 0, 255);
-	    g.line(new Coord(lx, 1), new Coord(lx, tcache.sz().y - 1), 1);
-	    g.chcolor();
+	    int lx = toffx + cx - sx + 1;
+	    g.line(new Coord(lx, ty + 1), new Coord(lx, ty + tcache.sz().y - 1), 1);
 	}
+	drawfb(g);
     }
 
     public TextEntry(Coord c, Coord sz, Widget parent, String deftext) {

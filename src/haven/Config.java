@@ -27,6 +27,7 @@
 package haven;
 
 import java.net.URL;
+import java.net.URI;
 import java.io.PrintStream;
 import static haven.Utils.getprop;
 
@@ -36,6 +37,7 @@ public class Config {
     public static String defserv = getprop("haven.defserv", "127.0.0.1");
     public static URL resurl = geturl("haven.resurl", "");
     public static URL mapurl = geturl("haven.mapurl", "");
+    public static URI cachebase = geturi("haven.cachebase", "");
     public static URL screenurl = geturl("haven.screenurl", "");
     public static URL manualurl = geturl("haven.manualurl", "https://salemthegame.wiki");
     public static URL storeurl = geturl("haven.storeurl", "http://login.salemthegame.com/portal/tostore");
@@ -78,6 +80,17 @@ public class Config {
 	try {
 	    return(new URL(val));
 	} catch(java.net.MalformedURLException e) {
+	    throw(new RuntimeException(e));
+	}
+    }
+
+    private static URI geturi(String name, String def) {
+	String val = getprop(name, def);
+	if(val.equals(""))
+	    return(null);
+	try {
+	    return(new URI(val));
+	} catch(java.net.URISyntaxException e) {
 	    throw(new RuntimeException(e));
 	}
     }
