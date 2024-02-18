@@ -164,11 +164,13 @@ public class BuddyWnd extends Window implements Iterable<BuddyWnd.Buddy> {
 
 	protected void drawbg(GOut g) {
 	    if(ch) {
-		g.chcolor(248, 255, 224, 255);
+		g.chcolor(32, 24, 8, 255);
 		g.frect(Coord.z, sz);
 		g.chcolor();
 	    } else {
+		g.chcolor(0, 0, 0, 255);
 		g.frect(Coord.z, sz);
+		g.chcolor();
 	    }
 	}
 

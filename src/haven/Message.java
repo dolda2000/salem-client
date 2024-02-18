@@ -185,6 +185,10 @@ public class Message implements java.io.Serializable {
 		    addint32(b.length);
 		}
 		addbytes(b);
+	    } else if(o instanceof Object[]) {
+		adduint8(T_TTOL);
+		addlist((Object[])o);
+		adduint8(T_END);
 	    } else {
 		throw(new RuntimeException("Cannot encode a " + o.getClass() + " as TTO"));
 	    }

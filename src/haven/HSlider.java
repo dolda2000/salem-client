@@ -29,8 +29,9 @@ package haven;
 import java.awt.image.BufferedImage;
 
 public class HSlider extends Widget {
-    static final Tex sflarp = Resource.loadtex("gfx/hud/sflarp");
-    static final Tex schain;
+    public static final Tex sflarp = Resource.loadtex("gfx/hud/sflarp");
+    public static final Tex schain;
+    public static final int h = sflarp.sz().y;
     public int val, min, max;
     private boolean drag = false;
 
@@ -45,22 +46,30 @@ public class HSlider extends Widget {
     }
 
     public HSlider(Coord c, int w, Widget parent, int min, int max, int val) {
-	super(c, new Coord(w, sflarp.sz().y), parent);
+	super(c, new Coord(w, h), parent);
 	this.val = val;
 	this.min = min;
 	this.max = max;
     }
 
+    public boolean vis() {
+	return(max > min);
+    }
+    
     public void draw(GOut g) {
-	int cy = (sflarp.sz().y - schain.sz().y) / 2;
-	for(int x = 0; x < sz.x; x += schain.sz().x)
-	    g.image(schain, new Coord(x, cy));
-	int fx = ((sz.x - sflarp.sz().x) * val) / (max - min);
-	g.image(sflarp, new Coord(fx, 0));
+	if(vis()) {
+	    int cy = (sflarp.sz().y - schain.sz().y) / 2;
+	    for(int x = 0; x < sz.x; x += schain.sz().x)
+		g.image(schain, new Coord(x, cy));
+	    int fx = ((sz.x - sflarp.sz().x) * val) / (max - min);
+	    g.image(sflarp, new Coord(fx, 0));
+	}
     }
     
     public boolean mousedown(Coord c, int button) {
 	if(button != 1)
+	    return(false);
+	if(!vis())
 	    return(false);
 	drag = true;
 	ui.grabmouse(this);
@@ -92,7 +101,19 @@ public class HSlider extends Widget {
 
     public void changed() {}
     
+    public void ch(int a) {
+	int val = this.val + a;
+	if(val > max)
+	    val = max;
+	if(val < min)
+	    val = min;
+	if(this.val != val) {
+	    this.val = val;
+	    changed();
+	}
+    }
+    
     public void resize(int w) {
-	super.resize(new Coord(w, sflarp.sz().y));
+	super.resize(new Coord(w, h));
     }
 }
