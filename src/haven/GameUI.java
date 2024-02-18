@@ -54,6 +54,7 @@ public class GameUI extends ConsoleHost implements Console.Directory {
     public Polity polity;
     public HelpWnd help;
     public OptWnd opts;
+    public Store storewnd;
     public Collection<GItem> hand = new LinkedList<GItem>();
     private WItem vhand;
     public ChatUI chat;
@@ -643,6 +644,9 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 	    ui.destroy(help);
 	    help = null;
 	    return;
+	} else if((sender == storewnd) && (msg == "close")) {
+	    storewnd.hide();
+	    return;
 	}
 	super.wdgmsg(sender, msg, args);
     }
@@ -897,7 +901,36 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 		return(true);
 	    }
 	}.presize();
-	if((Config.storeurl != null) && (WebBrowser.self != null)) {
+	if(Config.storebase != null) {
+	    new IButton(Coord.z, this, Resource.loadimg("gfx/hud/cashu"), Resource.loadimg("gfx/hud/cashd"), Resource.loadimg("gfx/hud/cashh")) {
+		{
+		    tooltip = Text.render("Salem Store");
+		}
+		
+		public void click() {
+		    if(storewnd == null) {
+			storewnd = new Store(Coord.z, GameUI.this, Config.storebase);
+			storewnd.hide();
+			storewnd.c = storewnd.parent.sz.sub(storewnd.sz).div(2);
+		    }
+		    if(storewnd.show(!storewnd.visible)) {
+			storewnd.raise();
+			fitwdg(storewnd);
+			GameUI.this.setfocus(storewnd);
+		    }
+		}
+
+		public void presize() {
+		    this.c = mainmenu.c.sub(0, this.sz.y);
+		}
+
+		public Object tooltip(Coord c, Widget prev) {
+		    if(checkhit(c))
+			return(super.tooltip(c, prev));
+		    return(null);
+		}
+	    }.presize();
+	} else if((Config.storeurl != null) && (WebBrowser.self != null)) {
 	    new IButton(Coord.z, this, Resource.loadimg("gfx/hud/cashu"), Resource.loadimg("gfx/hud/cashd"), Resource.loadimg("gfx/hud/cashh")) {
 		{
 		    tooltip = Text.render("Salem Store");

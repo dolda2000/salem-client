@@ -217,21 +217,31 @@ public class Defer extends ThreadGroup {
 	}
     }
 
-    public <T> Future<T> defer(Callable<T> task) {
+    public <T> Future<T> defer(Callable<T> task, boolean run) {
 	Future<T> f = new Future<T>(task);
-	defer(f);
+	if(run)
+	    defer(f);
+	else
+	    f.chstate("resched");
 	return(f);
     }
+    public <T> Future<T> defer(Callable<T> task) {
+	return(defer(task, true));
+    }
     
-    public static <T> Future<T> later(Callable<T> task) {
+    public static <T> Future<T> later(Callable<T> task, boolean run) {
 	ThreadGroup tg = Thread.currentThread().getThreadGroup();
 	if(tg instanceof Defer)
-	    return(((Defer)tg).defer(task));
+	    return(((Defer)tg).defer(task, run));
 	Defer d;
 	synchronized(groups) {
 	    if((d = groups.get(tg)) == null)
 		groups.put(tg, d = new Defer(tg));
 	}
-	return(d.defer(task));
+	return(d.defer(task, run));
+    }
+
+    public static <T> Future<T> later(Callable<T> task) {
+	return(later(task, true));
     }
 }
