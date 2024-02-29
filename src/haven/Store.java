@@ -35,6 +35,7 @@ import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 
 public class Store extends Window {
+    public static final Tex bg = Resource.loadtex("gfx/hud/store/bg");
     public static final Text.Foundry textf = new Text.Foundry(new Font("Sans", Font.BOLD, 16), Color.BLACK).aa(true);
     public static final Text.Foundry texto = new Text.Foundry(new Font("Sans", Font.BOLD, 14), Color.BLACK).aa(true);
     public static final RichText.Foundry descfnd = new RichText.Foundry(java.awt.font.TextAttribute.FAMILY, "SansSerif",
@@ -56,6 +57,8 @@ public class Store extends Window {
 
     public Store(Coord c, Widget parent, URI base) {
 	super(c, new Coord(750, 450), parent, "Salem Store");
+	Widget bg = new Img(Coord.z, this.bg, this);
+	bg.c = new Coord((sz.x - bg.sz.x) / 2, 0);
 	this.base = base;
 	new Loader();
     }
@@ -417,6 +420,9 @@ public class Store extends Window {
 	    }
 
 	    public void draw(GOut g) {
+		g.chcolor(0, 0, 0, 128);
+		g.frect(Coord.z, sz);
+		g.chcolor();
 		super.draw(g);
 		if(cart.items.isEmpty())
 		    g.image(empty.tex(), sz.sub(empty.sz()).div(2));
