@@ -34,12 +34,14 @@ public class RichTextBox extends Widget {
     private final RichText.Foundry fnd;
     private RichText text;
     private Scrollbar sb;
+    public boolean drawbox = true;
     
     public RichTextBox(Coord c, Coord sz, Widget parent, String text, RichText.Foundry fnd) {
 	super(c, sz, parent);
 	this.fnd = fnd;
+	this.sb = new Scrollbar(new Coord(sz.x - fbox.br.sz().x, fbox.bt.sz().y), sz.y - fbox.bt.sz().y - fbox.bb.sz().y, this, 0, 100);
 	this.text = fnd.render(text, sz.x - 20);
-	this.sb = new Scrollbar(new Coord(sz.x - fbox.br.sz().x, fbox.bt.sz().y), sz.y - fbox.bt.sz().y - fbox.bb.sz().y, this, 0, this.text.sz().y + 20 - sz.y);
+	sb.max = this.text.sz().y + 20 - sz.y;
     }
     
     public RichTextBox(Coord c, Coord sz, Widget parent, String text, Object... attrs) {
@@ -52,9 +54,22 @@ public class RichTextBox extends Widget {
 	    g.frect(Coord.z, sz);
 	    g.chcolor();
 	}
-	g.image(text.tex(), new Coord(10, 10 - sb.val));
-	fbox.draw(g, Coord.z, sz);
+	if(text != null){
+	    g.image(text.tex(), textshift());
+	}
+	if(drawbox){
+	    fbox.draw(g, Coord.z, sz);
+	}
 	super.draw(g);
+    }
+
+    public RichText.Part partat(Coord c){
+	return text.partat(c.sub(textshift()));
+    }
+
+    protected Coord textshift(){
+	int v = 10 - (sb == null ? 0 : sb.val);
+	return new Coord(10, v);
     }
     
     public void settext(String text) {
