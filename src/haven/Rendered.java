@@ -89,7 +89,9 @@ public interface Rendered extends Drawn {
 		    Location.Chain lb = sb.get(PView.loc);
 		    Matrix4f mvb = cb.fin(Matrix4f.id).mul(lb.fin(Matrix4f.id));
 		    float db = (float)Math.sqrt((mvb.m[12] * mvb.m[12]) + (mvb.m[13] * mvb.m[13]) + (mvb.m[14] * mvb.m[14]));
-		    if(da < db)
+		    if(da == db)
+			return(0);
+		    else if(da < db)
 			return(1);
 		    else
 			return(-1);
