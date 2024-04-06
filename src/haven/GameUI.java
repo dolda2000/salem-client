@@ -637,7 +637,8 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 	    help = null;
 	    return;
 	} else if((sender == storewnd) && (msg == "close")) {
-	    storewnd.hide();
+	    ui.destroy(storewnd);
+	    storewnd = null;
 	    return;
 	}
 	super.wdgmsg(sender, msg, args);
@@ -902,13 +903,10 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 		public void click() {
 		    if(storewnd == null) {
 			storewnd = new Store(Coord.z, GameUI.this, Config.storebase);
-			storewnd.hide();
 			storewnd.c = storewnd.parent.sz.sub(storewnd.sz).div(2);
-		    }
-		    if(storewnd.show(!storewnd.visible)) {
-			storewnd.raise();
-			fitwdg(storewnd);
-			GameUI.this.setfocus(storewnd);
+		    } else {
+			ui.destroy(storewnd);
+			storewnd = null;
 		    }
 		}
 
