@@ -147,13 +147,15 @@ public class Store extends Window {
 	public final List<Offer> offers;
 	public final List<Category> catgs;
 	public final Map<String, Category> catgid;
+	public final Price credit;
 
-	public Catalog(List<Offer> offers, List<Category> catgs) {
+	public Catalog(List<Offer> offers, List<Category> catgs, Price credit) {
 	    this.offers = offers;
 	    this.catgs = catgs;
 	    catgid = new HashMap<>();
 	    for(Category catg : catgs)
 		catgid.put(catg.id, catg);
+	    this.credit = credit;
 	}
     }
 
@@ -512,7 +514,7 @@ public class Store extends Window {
     public abstract class Checkouter extends Widget {
 	public final Catalog cat;
 	public final Cart cart;
-	private Widget status, detail, button;
+	private Widget status, detail, buttons[];
 
 	public Checkouter(Catalog cat, Cart cart) {
 	    super(Coord.z, Store.this.asz, Store.this);
@@ -530,10 +532,14 @@ public class Store extends Window {
 	    new Browser(cat, cart);
 	}
 
-	public void status(String msg, String detail, String button, Runnable action) {
+	public void statusv(String msg, String detail, String[] buttons, Runnable[] actions) {
 	    if(this.status != null) {ui.destroy(this.status); this.status = null;}
 	    if(this.detail != null) {ui.destroy(this.detail); this.detail = null;}
-	    if(this.button != null) {ui.destroy(this.button); this.button = null;}
+	    if(this.buttons != null) {
+		for(Widget btn : this.buttons)
+		    ui.destroy(btn);
+		this.buttons = null;
+	    }
 	    int y = sz.y / 3;
 	    if(msg != null) {
 		this.status = new Img(Coord.z, textf.render(msg, Button.defcol).tex(), this);
@@ -543,21 +549,33 @@ public class Store extends Window {
 		this.detail = new Img(Coord.z, descfnd.render(detail, 400).tex(), this);
 		this.detail.c = new Coord((sz.x - this.detail.sz.x) / 2, y); y += this.detail.sz.y + 5;
 	    }
-	    if(button != null) {
-		this.button = new Button(new Coord((sz.x - 100) / 2, y), 100, this, button) {
-			public void click() {
-			    action.run();
-			}
-		    };
+	    if(buttons.length > 0) {
+		this.buttons = new Widget[buttons.length];
+		int x = (sz.x - ((buttons.length * 100) + ((buttons.length - 1) * 20))) / 2;
+		for(int i = 0; i < buttons.length; i++) {
+		    Runnable action = actions[i];
+		    this.buttons[i] = new Button(new Coord(x, y), 100, this, buttons[i]) {
+			    public void click() {
+				action.run();
+			    }
+			};
+		    x += 100 + 20;
+		}
 	    }
+	}
+
+	public void status(String msg, String detail, String button, Runnable action) {
+	    statusv(msg, detail, (button == null) ? new String[0] : new String[] {button}, (button == null) ? new Runnable[0] : new Runnable[] {action});
 	}
     }
 
     public class BrowserCheckouter extends Checkouter {
+	public final Price credit;
 	private Defer.Future<Object[]> submit;
 
-	public BrowserCheckouter(Catalog cat, Cart cart) {
+	public BrowserCheckouter(Catalog cat, Cart cart, Price credit) {
 	    super(cat, cart);
+	    this.credit = credit;
 	    submit = Defer.later(this::submit);
 	    status("Checking out...", null, null, null);
 	}
@@ -594,6 +612,8 @@ public class Store extends Window {
 	    Map<String, Object> data = new HashMap<>();
 	    data.put("cart", encode(cart));
 	    data.put("method", "paypal");
+	    if(credit != null)
+		data.put("usecredit", credit.a);
 	    URLConnection conn = req("checkout");
 	    send(conn, Utils.mapencf(data));
 	    return(fetch(conn));
@@ -602,6 +622,86 @@ public class Store extends Window {
 	private void done() {
 	    status("Thank you!", "Please follow the instructions in the web browser to complete your purchase.", "Return", this::reload);
 	}
+    }
+
+    public class CreditCheckouter extends Checkouter {
+        private Defer.Future<Object[]> submit, execute;
+        private String txnid;
+
+        public CreditCheckouter(Catalog cat, Cart cart) {
+            super(cat, cart);
+            submit = Defer.later(this::submit);
+            status("Checking out...", null, null, null);
+        }
+
+	private void authorize() {
+	    status("Executing order...", null, null, null);
+	    execute = Defer.later(this::execute);
+	}
+
+        public void tick(double dt) {
+            super.tick(dt);
+            if(submit != null) {
+                try {
+                    Map<Object, Object> stat = Utils.mapdecf(submit.get());
+                    submit = null;
+                    if(Utils.eq(stat.get("status"), "ok")) {
+                        statusv("Your purchase can be completed on credit alone.", RichText.Parser.quote("Do you wish to continue? " + cart.total() + " of store credit will be used."),
+				new String[] {"Confirm", "Return"}, new Runnable[] {this::authorize, this::back});
+                        txnid = (String)stat.get("cart");
+                    } else if(Utils.eq(stat.get("status"), "obsolete")) {
+                        status("The catalog has changed while you were browsing.", null, "Reload", this::reload);
+                    } else if(Utils.eq(stat.get("status"), "invalid")) {
+                        status("The purchase has become invalid.", RichText.Parser.quote((String)stat.get("msg")), "Reload", this::reload);
+                    } else if(Utils.eq(stat.get("status"), "err")) {
+                        status("An unexpected error occurred.", RichText.Parser.quote((String)stat.get("msg")), "Return", this::back);
+                    }
+                } catch(Loading l) {
+                } catch(Defer.DeferredException e) {
+                    submit = null;
+                    status("An unexpected error occurred.", RichText.Parser.quote(String.valueOf(e.getCause())), "Return", this::back);
+                }
+            }
+            if(execute != null) {
+                try {
+                    Map<Object, Object> stat = Utils.mapdecf(execute.get());
+                    execute = null;
+                    if(Utils.eq(stat.get("status"), "ok")) {
+                        done();
+                    } else if(Utils.eq(stat.get("status"), "obsolete")) {
+                        status("The catalog has changed while you were browsing.", null, "Reload", this::reload);
+                    } else if(Utils.eq(stat.get("status"), "invalid")) {
+                        status("The purchase has become invalid.", RichText.Parser.quote((String)stat.get("msg")), "Reload", this::reload);
+                    } else if(Utils.eq(stat.get("status"), "err")) {
+                        status("An unexpected error occurred.", RichText.Parser.quote((String)stat.get("msg")), "Return", this::back);
+                    }
+                } catch(Loading l) {
+                } catch(Defer.DeferredException e) {
+                    execute = null;
+                    status("An unexpected error occurred.", RichText.Parser.quote(String.valueOf(e.getCause())), "Return", this::back);
+                }
+            }
+        }
+
+        private Object[] submit() {
+            Map<String, Object> data = new HashMap<>();
+            data.put("cart", encode(cart));
+            data.put("method", "credit");
+	    data.put("usecredit", cart.total().a);
+            URLConnection conn = req("checkout");
+            send(conn, Utils.mapencf(data));
+            return(fetch(conn));
+        }
+
+        private Object[] execute() {
+            URLConnection conn = req("creditfin", "cart", txnid);
+            conn.setDoOutput(true);
+            return(fetch(conn));
+        }
+
+        private void done() {
+            status("Thank you!", "Your purchase has been completed.", "Return", this::reload);
+        }
     }
 
     public class Browser extends Widget {
@@ -624,7 +724,11 @@ public class Store extends Window {
 		}
 
 		public void checkout() {
-		    new BrowserCheckouter(cat, cart);
+		    if((cat.credit != null) && (cat.credit.a >= cart.total().a)) {
+			new CreditCheckouter(cat, cart);
+		    } else {
+			new BrowserCheckouter(cat, cart, cat.credit);
+		    }
 		    ui.destroy(Browser.this);
 		}
 	    };
@@ -908,6 +1012,7 @@ public class Store extends Window {
 	List<Category> catgs = new ArrayList<>();
 	Object[] ls = fetch("offers");
 	int order = 0;
+	Price credit = null;
 	for(Object item : ls) {
 	    Object[] enc = (Object[])item;
 	    String type = (String)enc[0];
@@ -944,10 +1049,12 @@ public class Store extends Window {
 		catgs.add(catg);
 	    } else if(type.equals("error")) {
 		throw(new MessageError((String)enc[1]));
+	    } else if(type.equals("credit")) {
+		credit = Price.parse((Object[])enc[1]);
 	    }
 	}
 	Collections.sort(offers, (a, b) -> (a.sortkey - b.sortkey));
 	Collections.sort(catgs, (a, b) -> (a.sortkey - b.sortkey));
-	return(new Catalog(offers, catgs));
+	return(new Catalog(offers, catgs, credit));
     }
 }
