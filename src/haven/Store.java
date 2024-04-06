@@ -717,7 +717,14 @@ public class Store extends Window {
 	    this.cat = cat;
 	    this.cart = cart;
 	    this.btns = new HScrollport(new Coord(10, sz.y - 180), new Coord(sz.x - 20, 180), this);
-	    new CartWidget(new Coord(sz.x - 200 - 10, 0), new Coord(200, sz.y - 200), this, cart) {
+	    Coord cartc = new Coord(sz.x - 200 - 10, 0);
+	    Coord cartsz = new Coord(200, sz.y - 200);
+	    if(cat.credit != null) {
+		new Label(cartc, this, "Store credit: " + cat.credit).setcolor(Button.defcol);
+		cartc = cartc.add(0, 15);
+		cartsz = cartsz.sub(0, 15);
+	    }
+	    new CartWidget(cartc, cartsz, this, cart) {
 		public boolean clickitem(Cart.Item item, int btn) {
 		    new Viewer(item.offer, Browser.this, cart);
 		    return(true);
